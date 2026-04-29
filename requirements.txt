@@ -1,0 +1,11 @@
+yt-dlp
+requests
+youtube-transcript-api
+python-dotenv
+numpy 
+
+langchain
+langchain-huggingface
+langchain-openrouter
+supabase
+chromadb
