@@ -1,0 +1,2 @@
+Build a simple API with 3 endpoints: /embed (takes text, returns embedding), /similarity (takes two texts, returns score), /search (takes a query and a list of documents, returns ranked results)
+Use your code from Phase 1. You're already connecting the dots.

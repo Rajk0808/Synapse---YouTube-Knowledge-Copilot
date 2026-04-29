@@ -1,0 +1,15 @@
+tiktoken
+pypdf
+openai
+fastapi
+python-dotenv
+numpy
+yt-dlp
+requests
+youtube-transcript-api
+python-dotenv
+langchain
+langchain-huggingface
+langchain-openrouter
+supabase
+chromadb
