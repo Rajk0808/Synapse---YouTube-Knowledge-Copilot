@@ -9,7 +9,7 @@ client = TestClient(app)
 #============================================
 def test_add_source_valid_input(mock_ingest, mock_client_db):
     insert_table = MagicMock()
-    insert_table.insert.return_value.execute.return_value = MagicMock(data=None)
+    insert_table.insert.return_value.execute.return_value = MagicMock(data=[{'source_id' : '12345'}])
 
     select_table = MagicMock()
     select_table.select.return_value.eq.return_value.execute.return_value = MagicMock(
@@ -44,7 +44,7 @@ def test_add_source_valid_input(mock_ingest, mock_client_db):
 # Valid input with error.
 def test_add_source_valid_input_with_error(mock_ingest, mock_client_db):
     insert_table = MagicMock()
-    insert_table.insert.return_value.execute.return_value = MagicMock(data=None)
+    insert_table.insert.return_value.execute.return_value = MagicMock(data=[{'source_id': '12345'}])
 
     select_table = MagicMock()
     select_table.select.return_value.eq.return_value.execute.return_value = MagicMock(

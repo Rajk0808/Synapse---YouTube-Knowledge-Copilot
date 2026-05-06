@@ -155,7 +155,7 @@ async def addSource(request: AddSourceInput):
         'user_id': request.user_id,
         'source_id': source_id,
         'url': request.url,
-        'languages': ['en'],   # ← fixed key name
+        'languages': ['en'],   
     }
 
     ingest = Ingest()
