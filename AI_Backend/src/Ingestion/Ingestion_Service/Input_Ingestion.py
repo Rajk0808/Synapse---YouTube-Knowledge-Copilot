@@ -300,18 +300,12 @@ class Utils:
     # ── Transcript helpers ────────────────────────────────────────────────────
 
     def _fetch_transcript_items(self, video_id: str, language_priority: list[str]) -> list[dict]:
-        """Fetch transcript items as raw dicts with text/start/duration keys."""
-
-        get_transcript = getattr(YouTubeTranscriptApi, "get_transcript", None)
-        if callable(get_transcript):
-            return cast(list[dict], get_transcript(video_id, languages=language_priority))
-
         api = YouTubeTranscriptApi()
         transcript_obj = api.fetch(video_id, languages=language_priority)
-
+    
         if hasattr(transcript_obj, "to_raw_data"):
             return transcript_obj.to_raw_data()
-
+    
         return [
             {
                 "text": getattr(item, "text", ""),
@@ -455,3 +449,4 @@ class Utils:
                 metadata["transcript_error"] = str(exc)
 
         return metadata
+
