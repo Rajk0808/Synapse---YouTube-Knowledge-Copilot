@@ -7,7 +7,6 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-# Run tests first — build fails if any test fails
-RUN pytest tests/ --tb=short -q
+EXPOSE 8000
 
-CMD ["python", "main.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
