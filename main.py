@@ -12,6 +12,8 @@ from AI_Backend.pipeline.ingestion_pipeline import Ingest
 from AI_Backend.pipeline.deletion_pipeline import Remove
 from AI_Backend.pipeline.rag_pipeline import retrieve
 from database.models import UserSignpInput, UserloginInput, AddNotebookInput, DeleteNotebook, RenameNotebook, AddSourceInput, DeleteSourceInput
+import logging
+logger = logging.getLogger(__name__)
 templates = Jinja2Templates(directory="templates")
 
 ph = PasswordHasher()
@@ -139,25 +141,34 @@ async def getPrevChats(notebook_id: str):
 
 @app.post('/notebook/sources/add/')
 async def addSource(request: AddSourceInput):
-    data = {
-        'notebook_id': request.notebook_id, 
-        'source_type': request.source_type, 
-        'file_path': request.url, 
+    insert_response = client_db.table('Source').insert({
+        'notebook_id': request.notebook_id,
+        'source_type': request.source_type,
+        'file_path': request.url,
         'original_filename': request.title
+    }).execute()
+
+    source_id = insert_response.data[0]['source_id']
+
+    ingest_data = {
+        'notebook_id': request.notebook_id,
+        'user_id': request.user_id,
+        'source_id': source_id,
+        'url': request.url,
+        'languages': ['en'],   # ← fixed key name
     }
-    client_db.table('Source').insert(data).execute()
-    source_id = client_db.table('Source').select('source_id').eq('notebook_id', request.notebook_id).execute().data[0]['source_id']
-    data['user_id'] = request.user_id
-    data['url'] = data['file_path']
-    data['source_id'] = source_id
-    data['language'] = ['en']
+
     ingest = Ingest()
     try:
-        data = ingest.invoke(data)
-        client_db.table('Source').update({'original_filename': data['document']['title']}).eq('source_id',source_id).execute()
-        return data['document']['title']
+        logger.info(f"Starting ingestion for source_id={source_id}, url={request.url}")
+        result = ingest.invoke(ingest_data)
+        title = result['document']['title']
+        client_db.table('Source').update({'original_filename': title}).eq('source_id', source_id).execute()
+        logger.info(f"Ingestion successful for source_id={source_id}")
+        return title
+
     except ValueError as e:
-        # Delete the source that was just inserted since ingestion failed
+        logger.error(f"Ingestion failed for source_id={source_id}: {e}")
         client_db.table('Source').delete().eq('source_id', source_id).execute()
         raise HTTPException(status_code=400, detail=str(e))
 

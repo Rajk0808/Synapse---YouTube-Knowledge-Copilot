@@ -423,6 +423,7 @@ class Utils:
             dict: Combined metadata and transcript (if available).
         """
         url = data.get("url")
+        
         if not url:
             raise ValueError("'url' is required in input data.")
 
