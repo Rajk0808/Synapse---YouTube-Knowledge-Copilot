@@ -9,6 +9,17 @@ class StoreEmbeddings():
         index_name = f"{data['notebook_id']}"
         namespace = data['source_id']
         pc = self.client_pc
+        chunks = []
+        for chunk in data.get('chunks', []):
+            chunks.append({
+                'id' : chunk['id'],
+                "text": chunk['text']
+            })
+            
+        if not chunks:
+            # No chunks to store, perhaps no transcript available
+            return data
+            
         if not pc.has_index(index_name):
             pc.create_index_for_model(
                 name=index_name,
@@ -19,16 +30,7 @@ class StoreEmbeddings():
                     "field_map":{"text": "text"}
                 }
             )
-        chunks = []
-        for chunk in data['chunks']:
-            chunks.append({
-                'id' : chunk['id'],
-                "text": chunk['text']
-            })
-            
-        if not chunks:
-            raise ValueError("No transcript chunks were generated for this video. The video might not have English captions available, or it is too short.")
-            
+        
         index = pc.Index(name=index_name)
         index.upsert_records(namespace=namespace,records=chunks)
         return data

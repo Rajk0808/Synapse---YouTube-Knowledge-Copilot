@@ -342,12 +342,45 @@ class Utils:
             return " ".join(
                 item.get("text", "") for item in transcript_items if item.get("text")
             )
-
         except (TranscriptsDisabled, NoTranscriptFound) as exc:
+            # Try to fetch subtitles using yt-dlp as a fallback when YouTube captions are unavailable
+            try:
+                from yt_dlp import YoutubeDL
+                ydl_opts = {
+                    "skip_download": True,
+                    "writesubtitles": True,
+                    "subtitleslangs": language_priority,
+                    "quiet": True,
+                }
+                with YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+                    subs = info.get("subtitles", {})
+                    # Prefer the first requested language that exists
+                    for lang in language_priority:
+                        if lang in subs:
+                            # subtitles are provided as a list of dicts with 'url'
+                            sub_url = subs[lang][0]["url"]
+                            # Fetch the subtitle file
+                            import requests
+                            sub_resp = requests.get(sub_url, timeout=10)
+                            sub_resp.raise_for_status()
+                            # Simple extraction of text from VTT/TTML (strip timestamps and markup)
+                            import re
+                            text = re.sub(r"\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}", "", sub_resp.text)
+                            text = re.sub(r"<[^>]+>", "", text)  # remove any HTML/TTML tags
+                            text = re.sub(r"\s+", " ", text).strip()
+                            if text:
+                                return text
+                    # If no subtitles found for any language, fall through to original error
+                raise
+            except Exception as yt_exc:
+                # Log the secondary failure and re‑raise the original exception for consistent API response
+                logger.warning(f"yt-dlp subtitle fallback failed for video {video_id}: {yt_exc}")
             raise ValueError(
-                "Transcript is not available for this video. "
-                f"The video likely has captions disabled or no captions in {language_priority}."
-            ) from exc
+                    "Transcript is not available for this video and yt-dlp fallback also failed. "
+                    "The video might have captions disabled, no captions in the requested languages, "
+                    "be too short, or require YouTube login to access. "
+                    f"Original error: {exc}" ) from exc
         except (IpBlocked, RequestBlocked) as exc:
             raise ValueError(
                 "YouTube is blocking transcript requests from this IP/network right now. "
@@ -399,7 +432,8 @@ class Utils:
         except (TranscriptsDisabled, NoTranscriptFound) as exc:
             raise ValueError(
                 "Transcript is not available for this video. "
-                f"The video likely has captions disabled or no captions in {language_priority}."
+                f"The video likely has captions disabled, no captions in {language_priority}, "
+                "or requires YouTube login to access."
             ) from exc
         except (IpBlocked, RequestBlocked) as exc:
             raise ValueError(

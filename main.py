@@ -162,10 +162,24 @@ async def addSource(request: AddSourceInput):
     try:
         logger.info(f"Starting ingestion for source_id={source_id}, url={request.url}")
         result = ingest.invoke(ingest_data)
-        title = result['document']['title']
+        # Extract title safely; support both legacy and new result formats
+        title = None
+        if isinstance(result, dict):
+            title = result.get("title")
+            if not title:
+                title = result.get("document", {}).get("title")
+        if not title:
+            raise HTTPException(status_code=400, detail="Ingestion did not return a title")
+        # Update source title regardless of transcript availability
         client_db.table('Source').update({'original_filename': title}).eq('source_id', source_id).execute()
-        logger.info(f"Ingestion successful for source_id={source_id}")
-        return title
+        # Handle possible transcript errors without failing the request
+        transcript_error = result.get("transcript_error")
+        if transcript_error:
+            logger.warning(f"Ingestion completed but transcript missing for source_id={source_id}: {transcript_error}")
+            return {"title": title, "warning": transcript_error}
+        else:
+            logger.info(f"Ingestion successful for source_id={source_id}")
+            return title
 
     except ValueError as e:
         logger.error(f"Ingestion failed for source_id={source_id}: {e}")
