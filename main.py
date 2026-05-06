@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Response, status, responses, HTTPException
+import uvicorn
 import time
 import asyncio
 from fastapi import WebSocket, WebSocketDisconnect
@@ -302,3 +303,6 @@ async def get_health():
         'status' : "ok"
     }
 
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

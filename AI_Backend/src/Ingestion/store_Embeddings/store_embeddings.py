@@ -6,7 +6,7 @@ class StoreEmbeddings():
         self.client_pc = vectore_db_client()
 
     def invoke(self, data :Dict):
-        index_name = f'{data['notebook_id']}'
+        index_name = f"{data['notebook_id']}"
         namespace = data['source_id']
         pc = self.client_pc
         if not pc.has_index(index_name):

@@ -1,0 +1,32 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: docker build -t my-app .
+
+      - name: Run tests
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPA_BASE_KEY: ${{ secrets.SUPA_BASE_KEY }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          HUGGINGFACEHUB_API_TOKEN: ${{ secrets.HUGGINGFACEHUB_API_TOKEN }}
+        run: |
+          docker run \
+            --env OPENROUTER_API_KEY=$OPENROUTER_API_KEY \
+            --env SUPABASE_URL=$SUPABASE_URL \
+            --env SUPA_BASE_KEY=$SUPA_BASE_KEY \
+            --env PINECONE_API_KEY=$PINECONE_API_KEY \
+            --env HUGGINGFACEHUB_API_TOKEN=$HUGGINGFACEHUB_API_TOKEN \
+            my-app pytest --tb=short -q

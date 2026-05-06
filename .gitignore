@@ -6,11 +6,5 @@ __pycache__/
 *.pyc
 *.pyo
 */__pycache__/
-<<<<<<< HEAD
 *.logs
-test.py
-main.ipynb
 .pytest_cache/
-=======
-*.logs
->>>>>>> ece25cec9c675bdcb1e5bdd079abde220479858d

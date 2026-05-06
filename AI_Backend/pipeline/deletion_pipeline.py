@@ -5,7 +5,7 @@ class Remove():
         self.pc = vectore_db_client()
     
     def invoke(self,data):
-        index = self.pc.Index(name= f'{data['notebook_id']}')
+        index = self.pc.Index(name= f"{data['notebook_id']}")
         index.delete_namespace(namespace=data['source_id'])
         return {'message' : 'source files removed.'}
         
