@@ -5,16 +5,14 @@ from main import app
 client = TestClient(app)
 
 def test_signup_success(mock_client_db):
-    mock_response = MagicMock()
-    mock_response.data = None
-    mock_client_db.table.return_value.select.return_value.maybe_single.return_value.execute.return_value = mock_response
+    mock_client_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = None
     mock_insert_response = MagicMock()
     mock_insert_response.data = [{'user_id': 1}]
     mock_client_db.table.return_value.insert.return_value.execute.return_value = mock_insert_response
 
     response = client.post('/user/signup/', json={
         'username': 'testuser',
-        'email': 'you@example1.com',
+        'email': 'you@ex.com',
         'password': '12345678'
     })
 
@@ -26,7 +24,7 @@ def test_signup_success(mock_client_db):
 def test_signup_email_exists(mock_client_db):
     mock_response = MagicMock()
     mock_response.data = {'user_id': 1, 'email': 'existing@example.com'}
-    mock_client_db.table.return_value.select.return_value.maybe_single.return_value.execute.return_value = mock_response
+    mock_client_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_response
 
     response = client.post('/user/signup/', json={
         'username': 'testuser',
@@ -48,7 +46,7 @@ def test_login_success(mock_client_db):
     }
     mock_response = MagicMock()
     mock_response.data = mock_user
-    mock_client_db.table.return_value.select.return_value.maybe_single.return_value.execute.return_value = mock_response
+    mock_client_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_response
 
     with patch('argon2.PasswordHasher.verify', return_value=True):
         response = client.post('/user/login', json={
@@ -63,7 +61,7 @@ def test_login_success(mock_client_db):
 def test_login_user_not_found(mock_client_db):
     mock_response = MagicMock()
     mock_response.data = None
-    mock_client_db.table.return_value.select.return_value.maybe_single.return_value.execute.return_value = mock_response
+    mock_client_db.table.return_value.select.return_value.eq.return_value.maybe_single.return_value.execute.return_value = mock_response
 
     response = client.post('/user/login', json={
         'email': 'nonexistent@example.com',
