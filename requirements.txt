@@ -12,4 +12,10 @@ langchain
 langchain-huggingface
 langchain-openrouter
 supabase
-chromadb
+argon2-cffi
+jinja2
+langchain-core
+pinecone
+pytest
+pytest-cov
+httpx

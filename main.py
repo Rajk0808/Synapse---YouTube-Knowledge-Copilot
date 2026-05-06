@@ -1,18 +1,21 @@
-from fastapi import FastAPI, Request, Response, status, responses
-from pydantic import BaseModel
-from Phase_one.embeddings import embed
-from Phase_one.semanticSearch import cosine_similarity, euclidean_distance, dot_product
-from logging import getLogger
-import asyncio
+from fastapi import FastAPI, Request, Response, status, responses, HTTPException
 import time
+import asyncio
 from fastapi import WebSocket, WebSocketDisconnect
-import Phase_three.chat_openrouter as chat_openrouter
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from database.connection import get_client
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+from AI_Backend.pipeline.ingestion_pipeline import Ingest
+from AI_Backend.pipeline.deletion_pipeline import Remove
+from AI_Backend.pipeline.rag_pipeline import retrieve
+from database.models import UserSignpInput, UserloginInput, AddNotebookInput, DeleteNotebook, RenameNotebook, AddSourceInput, DeleteSourceInput
 templates = Jinja2Templates(directory="templates")
 
-logger = getLogger()
+ph = PasswordHasher()
 app = FastAPI()
+client_db = get_client()
 
 
 # MiddleWares
@@ -47,25 +50,254 @@ async def cors_middleware(request: Request, call_next):
 
 # Web Sockets
 @app.websocket('/ws/chat')
-async def chat(websocket : WebSocket): 
+async def chat_ws(websocket : WebSocket, notebook_id: str = None, sources_ids: str = None): 
     await websocket.accept()
-    messages = chat_openrouter.messages
+    rag = retrieve()
+    conv = client_db.table('Conversation').select('*').eq('notebook_id', notebook_id).execute().data
+    if not conv:        
+        insert_data = {
+            "notebook_id": notebook_id,
+            "title" : notebook_id
+        }
+        client_db.table('Conversation').insert(insert_data).execute()
+        conversation_id = client_db.table('Conversation').select('conversation_id').eq('notebook_id', notebook_id).execute()
+    else:
+        conversation_id = conv[0]['conversation_id']
+    s_ids = sources_ids.split(',') if sources_ids else []
+    data = {'notebook_id': notebook_id, 'sources_ids': s_ids}
     try:
+        last_six_messages = client_db.table('Message').select('*').eq('conversation_id',conversation_id).order('created_at', desc=True).limit(6).execute().data[::-1]
         while True:
             user_msg = await websocket.receive_text()
+            client_db.table('Message').insert({
+                'conversation_id' : conversation_id,
+                'sender_type' : 'HumanMessage',
+                'content' : user_msg
+            }).execute()
+            last_six_messages.append({
+                'conversation_id' : conversation_id,
+                'sender_type' : 'HumanMessage',
+                'content' : user_msg,
+                'created_at' : time.time()
+                })
+            if not notebook_id or notebook_id == 'null':
+                await websocket.send_text("Error: No notebook active. Please select a notebook to chat.")
+                continue
+            data['messages'] = last_six_messages
+            data['query'] = user_msg
             
-            messages, response = chat_openrouter.chat_openrouter(user_msg, messages)
-            print(messages)
-            await websocket.send_text(response.content)
+            try:
+                response = rag.invoke(data=data)
+                if hasattr(response, 'content'):
+                    content = str(response.content)
+                else:
+                    content = str(response['response'])
+                client_db.table('Message').insert({
+                        'conversation_id' : conversation_id,
+                        'sender_type' : 'AIMessage',
+                        'content' : content
+                    }).execute()
+                last_six_messages.append({'conversation_id' : conversation_id,
+                        'sender_type' : 'AIMessage',
+                        'content' : content,
+                        'created_at' : time.time()
+                        })
+                last_six_messages = last_six_messages[-6:]
+                await websocket.send_text(content)
+
+            except Exception as e:
+                await websocket.send_text(f"An error occurred: {e}")
 
     except WebSocketDisconnect:
         print("Client disconnected")
 
-
-@app.get("/",response_class=HTMLResponse)
-async def get(request : Request):
+@app.get("/chat/",response_class=HTMLResponse)
+async def chat(request : Request):
+    notebook_id = request.query_params.get("notebook_id")
+    data = await loadNotebookSource(notebook_id)
+    sources = []
+    for source in data.get('sources', []):
+        sources.append(source['source_id'])
     return templates.TemplateResponse(
         request=request, 
         name="chatbot.html", 
-        context={"message": "Hello World"}
+        context={"message": "chat window", "notebook_id": notebook_id, 'sources' : sources}
     )
+
+@app.get('/chat/get_prev_chat')
+async def getPrevChats(notebook_id: str):
+    try:
+        chats = client_db.table('Conversation').select('*').eq('notebook_id', notebook_id).execute()
+        if chats is None:
+            return {'messages': []}
+        conversation_id = chats.data[0]['conversation_id']
+        messages = client_db.table('Message').select('*').eq('conversation_id', conversation_id).execute()
+        return {'messages': messages.data if messages.data else []}
+    except Exception as e:
+        raise e
+
+@app.post('/notebook/sources/add/')
+async def addSource(request: AddSourceInput):
+    data = {
+        'notebook_id': request.notebook_id, 
+        'source_type': request.source_type, 
+        'file_path': request.url, 
+        'original_filename': request.title
+    }
+    client_db.table('Source').insert(data).execute()
+    source_id = client_db.table('Source').select('source_id').eq('notebook_id', request.notebook_id).execute().data[0]['source_id']
+    data['user_id'] = request.user_id
+    data['url'] = data['file_path']
+    data['source_id'] = source_id
+    data['language'] = ['en']
+    ingest = Ingest()
+    try:
+        data = ingest.invoke(data)
+        client_db.table('Source').update({'original_filename': data['document']['title']}).eq('source_id',source_id).execute()
+        return data['document']['title']
+    except ValueError as e:
+        # Delete the source that was just inserted since ingestion failed
+        client_db.table('Source').delete().eq('source_id', source_id).execute()
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post('/notebook/sources/delete/')
+async def deleteSource(request: DeleteSourceInput):
+    remove = Remove()
+    try:
+        source = client_db.table('Source').select('*').eq('source_id', request.source_id).maybe_single().execute()
+        if source and source.data:
+            chunks = client_db.table('SourceChunk').select('*').eq('source_id', request.source_id).execute()
+            try:
+                if chunks.data:
+                    for chunk in chunks.data:
+                        client_db.table('Citation').delete().eq('chunk_id', chunk['chunk_id']).execute()
+                    client_db.table('SourceChunk').delete().eq('source_id', request.source_id).execute()
+            except:
+                print('No chunk data.')
+        client_db.table('Source').delete().eq('source_id', request.source_id).execute()
+        data = {
+            'source_id' : request.source_id,
+            'notebook_id' : request.notebook_id
+        }
+        remove.invoke(data)
+        return {'message': 'Source Deleted'}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail= str(e))
+
+@app.get('/notebook/sources/')
+async def loadNotebookSource(notebook_id: str):
+    source = client_db.table('Source').select('*').eq('notebook_id', notebook_id).execute()
+    return {'sources': source.data if source.data else []}
+
+
+@app.get("/", response_class=HTMLResponse)
+async def get(request : Request):
+    return templates.TemplateResponse(
+        request=request, 
+        name="home.html", 
+        context={"message": "chat window"}
+    )
+
+@app.get("/authentication/", response_class = HTMLResponse)
+async def authentication(request : Request):
+    return templates.TemplateResponse(
+        request = request,
+        name    = 'authentication.html',
+        context = {'message' : 'authentication'}
+    )
+
+@app.post('/user/login')
+async def login(request: UserloginInput):
+    response = client_db.table('user').select('*').eq('email', request.email).maybe_single().execute()
+    user = None if not response else response.data
+    if not user:
+        return {'authenticated': False, 'message': 'User not found'}
+    try: 
+        ph.verify(user['password_hash'], request.password)
+        return {'authenticated': True, 'user': {'user_id': user['user_id'], 'name': user['username'], 'email': user['email']}}
+    except VerifyMismatchError:
+        return {'authenticated': False, 'message': 'Invalid password'}
+    except Exception as e:
+        return {'authenticated': False, 'message': str(e)}
+    
+@app.post('/user/signup/')
+async def signup(request : UserSignpInput):
+    existing = client_db.table('user').select('*').eq('email', request.email).maybe_single().execute()
+    if existing and existing.data:
+        return {'authenticated': False, 'message': 'Email already exists'}
+    
+    hashed_password = ph.hash(request.password)
+    
+    new_user = {
+        'username' : request.username,
+        'email' : request.email,
+        'password_hash' : hashed_password
+    }
+
+    inserted = client_db.table('user').insert(new_user).execute()
+
+    return {"authenticated" : True, "message": "User created", "user": {"user_id": inserted.data[0]['user_id'], "name": request.username, "email": request.email}}
+
+
+@app.get('/notebooks/get/')
+async def getNotebooks(user_id: str):
+    try:
+        data = client_db.table('Notebook').select('*').eq('user_id', user_id).execute()
+    except Exception as e:
+        return {'error' : e}
+    return data.data if data.data else []
+
+@app.post('/notebook/add/')
+async def addNotebook(request : AddNotebookInput):
+    new_notebook = {
+        'user_id' : request.user_id,
+        'title'   : request.title,
+        'description' : request.description
+    }
+    client_db.table('Notebook').insert(new_notebook).execute()
+    return {"message": "Notebook created", "title": request.title}
+
+@app.post('/notebook/delete/')
+async def deleteNotebook(request: DeleteNotebook):
+    try:
+        response =  client_db.table('Conversation').select('conversation_id').eq('notebook_id', request.notebook_id).execute()
+        conversations = response.data 
+        if conversations:
+            for conv in conversations:
+                client_db.table('Message').delete().eq('conversation_id', conv['conversation_id']).execute()
+            client_db.table('Conversation').delete().eq('notebook_id', request.notebook_id).execute()
+        sources = client_db.table('Source').select('source_id').eq('notebook_id', request.notebook_id).execute().data
+        if sources:
+            for source in sources:
+                client_db.table('SourceChunk').delete().eq('source_id', source['source_id']).execute()
+            client_db.table('Source').delete().eq('notebook_id', request.notebook_id).execute()
+        client_db.table('Notebook').delete().eq('notebook_id', request.notebook_id).execute()
+        return {'message': "NoteBook Deleted.", "title": request.title}
+    except :
+        return {'message' : 'Notebook not found', 'title' : request.title}
+
+@app.post('/notebook/rename/')
+async def renameNotebook(request: RenameNotebook):
+    client_db.table('Notebook').update({'title': request.new_title}).eq('notebook_id', request.notebook_id).execute()
+    client_db.table('Conversation').update({'title': request.new_title}).eq('notebook_id', request.notebook_id).execute()
+    return {'message' : "NoteBook Renamed.","title": request.new_title}
+
+@app.get('/notebook/sources/')
+async def getNotebookSources(notebook_id: str):
+    # Get notebook details
+    notebook = client_db.table('Notebook').select('*').eq('notebook_id', notebook_id).maybe_single().execute()
+    
+    # Get sources for this notebook
+    sources = client_db.table('Source').select('*').eq('notebook_id', notebook_id).execute()
+    
+    return {
+        'notebook': notebook.data if notebook.data else None,
+        'sources': sources.data if sources.data else []
+    }
+
+@app.get('/health/')
+async def get_health():
+    return {
+        'status_code' : 200,
+        'status' : "ok"
+    }

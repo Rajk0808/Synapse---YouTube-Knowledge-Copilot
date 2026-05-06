@@ -1,70 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Synapse</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synapse AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:        #0a0a0f;
-      --surface:   #12121a;
-      --surface2:  #1a1a26;
-      --border:    rgba(255,255,255,0.07);
-      --border2:   rgba(255,255,255,0.12);
-      --accent:    #7c6fef;
-      --accent2:   #a89bf5;
-      --accent-glow: rgba(124,111,239,0.25);
-      --text:      #f0eeff;
-      --muted:     rgba(240,238,255,0.45);
-      --muted2:    rgba(240,238,255,0.25);
-      --user-bg:   #1e1a3a;
-      --user-border: rgba(124,111,239,0.35);
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    html, body {
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --surface3: #22223a;
+      --border: rgba(255, 255, 255, 0.07);
+      --border2: rgba(255, 255, 255, 0.13);
+      --accent: #7c6fef;
+      --accent2: #a89bf5;
+      --accent-glow: rgba(124, 111, 239, 0.22);
+      --text: #f0eeff;
+      --muted: rgba(240, 238, 255, 0.45);
+      --muted2: rgba(240, 238, 255, 0.25);
+      --danger: #ef4444;
+      --user-bg: #1e1a3a;
+      --user-border: rgba(124, 111, 239, 0.35);
+      --panel-w: 300px;
+    }
+
+    html,
+    body {
       height: 100%;
       width: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
       overflow: hidden;
     }
 
     body {
       display: flex;
       flex-direction: column;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
     }
 
-    /* subtle grid texture */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       background-image:
-        linear-gradient(rgba(124,111,239,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(124,111,239,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(124, 111, 239, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124, 111, 239, 0.03) 1px, transparent 1px);
       background-size: 48px 48px;
       pointer-events: none;
       z-index: 0;
     }
 
-    /* ── NAV ── */
+    /* NAV */
     nav {
       position: relative;
-      z-index: 10;
+      z-index: 100;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 28px;
-      height: 64px;
-      background: rgba(10,10,15,0.85);
-      backdrop-filter: blur(16px);
+      padding: 0 20px;
+      height: 60px;
+      background: rgba(10, 10, 15, 0.92);
+      backdrop-filter: blur(18px);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
@@ -75,129 +87,322 @@
       gap: 10px;
     }
 
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      position: relative;
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .logo-icon svg {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
+      display: block;
     }
 
     .brand {
       font-family: 'Syne', sans-serif;
       font-weight: 800;
-      font-size: 22px;
+      font-size: 20px;
       letter-spacing: -0.5px;
       color: var(--text);
-      position: relative;
     }
 
     .brand span {
       color: var(--accent2);
     }
 
-    .brand-tag {
+    .brand sup {
       font-family: 'DM Sans', sans-serif;
       font-weight: 300;
-      font-size: 10px;
+      font-size: 9px;
       letter-spacing: 3px;
       color: var(--muted);
       text-transform: uppercase;
       margin-left: 2px;
-      vertical-align: super;
     }
 
-    .nav-right {
+    .nav-center {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 16px;
+    }
+
+    .notebook-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 13px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      font-size: 12.5px;
+      color: var(--muted);
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .notebook-chip svg {
+      width: 12px;
+      height: 12px;
+      stroke: var(--accent2);
+      flex-shrink: 0;
     }
 
     .status-pill {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 12px;
+      padding: 4px 10px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 100px;
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--muted);
       font-weight: 300;
     }
 
     .status-dot {
-      width: 7px;
-      height: 7px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #22c55e;
-      box-shadow: 0 0 8px rgba(34,197,94,0.6);
-      transition: background 0.3s, box-shadow 0.3s;
-      flex-shrink: 0;
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+      transition: all 0.3s;
     }
 
     .status-dot.off {
       background: #ef4444;
-      box-shadow: 0 0 8px rgba(239,68,68,0.6);
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+    }
+
+    .sources-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 13px;
+      border-radius: 9px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .sources-nav-btn:hover,
+    .sources-nav-btn.active {
+      background: rgba(124, 111, 239, 0.15);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    .sources-nav-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .src-count {
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 100px;
+      padding: 1px 6px;
+      min-width: 16px;
+      text-align: center;
+    }
+
+    .login-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 9px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .login-btn:hover {
+      background: var(--accent2);
     }
 
     .profile-btn {
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: 2px solid var(--border2);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      position: relative;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 12px;
+      color: #fff;
+      transition: border-color 0.2s, transform 0.15s;
+      user-select: none;
     }
 
     .profile-btn:hover {
-      background: var(--surface);
-      border-color: var(--accent);
+      border-color: var(--accent2);
+      transform: scale(1.06);
     }
 
-    .profile-btn svg {
-      width: 18px;
-      height: 18px;
-      stroke: var(--muted);
+    .profile-wrap {
+      position: relative;
     }
 
-    .profile-btn:hover svg {
-      stroke: var(--accent2);
+    .profile-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 230px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 6px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s;
+      z-index: 200;
     }
 
-    /* ── MESSAGES AREA ── */
+    .profile-dropdown.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: all;
+    }
+
+    .pd-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 10px 12px;
+    }
+
+    .pd-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .pd-name {
+      font-weight: 500;
+      font-size: 13.5px;
+      color: var(--text);
+    }
+
+    .pd-email {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .pd-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    .pd-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .pd-item:hover {
+      background: var(--surface3);
+      color: var(--text);
+    }
+
+    .pd-item.danger:hover {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--danger);
+    }
+
+    .pd-item svg {
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+    }
+
+    /* LAYOUT */
+    .body-wrap {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .chat-area.panel-open {
+      margin-right: var(--panel-w);
+    }
+
+    /* MESSAGES */
     .messages-wrap {
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 32px 0 16px;
-      position: relative;
-      z-index: 1;
+      padding: 28px 0 12px;
       scroll-behavior: smooth;
     }
 
-    .messages-wrap::-webkit-scrollbar { width: 3px; }
-    .messages-wrap::-webkit-scrollbar-track { background: transparent; }
-    .messages-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-    .messages-inner {
-      max-width: 740px;
-      margin: 0 auto;
-      padding: 0 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+    .messages-wrap::-webkit-scrollbar {
+      width: 3px;
     }
 
-    /* empty state */
+    .messages-wrap::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px;
+    }
+
+    .messages-inner {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -210,11 +415,11 @@
     }
 
     .empty-state .big-icon {
-      width: 48px;
-      height: 48px;
+      width: 52px;
+      height: 52px;
       background: var(--surface2);
       border: 1px solid var(--border2);
-      border-radius: 14px;
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -224,36 +429,51 @@
     .empty-state h3 {
       font-family: 'Syne', sans-serif;
       font-weight: 700;
-      font-size: 18px;
+      font-size: 17px;
       color: var(--text);
     }
 
     .empty-state p {
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 300;
-      max-width: 280px;
+      max-width: 260px;
       line-height: 1.6;
     }
 
-    /* ── MESSAGE ROWS ── */
+    .empty-hint {
+      font-size: 12px;
+      color: var(--accent2);
+      margin-top: 4px;
+      font-weight: 400;
+    }
+
     .msg-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: flex-start;
       animation: fadeUp 0.25s ease forwards;
     }
 
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    .msg-row.user { justify-content: flex-end; }
+    .msg-row.user {
+      justify-content: flex-end;
+    }
 
     .bot-av {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
       background: var(--surface2);
       border: 1px solid var(--border2);
       display: flex;
@@ -263,51 +483,41 @@
       margin-top: 2px;
     }
 
-    .bot-av svg {
-      width: 16px;
-      height: 16px;
-      stroke: var(--accent2);
-    }
-
     .bubble {
-      max-width: 68%;
-      padding: 12px 16px;
-      font-size: 14.5px;
+      max-width: 70%;
+      padding: 11px 15px;
+      font-size: 14px;
       line-height: 1.65;
-      font-weight: 400;
       word-break: break-word;
-      position: relative;
     }
 
     .bubble.bot {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 4px 16px 16px 16px;
-      color: var(--text);
+      border-radius: 4px 14px 14px 14px;
     }
 
     .bubble.user {
       background: var(--user-bg);
       border: 1px solid var(--user-border);
-      border-radius: 16px 4px 16px 16px;
-      color: var(--text);
+      border-radius: 14px 4px 14px 14px;
     }
 
     .bubble .ts {
       display: block;
-      font-size: 11px;
-      margin-top: 6px;
+      font-size: 10.5px;
+      margin-top: 5px;
       color: var(--muted2);
       font-weight: 300;
-      letter-spacing: 0.2px;
     }
 
-    .bubble.user .ts { text-align: right; }
+    .bubble.user .ts {
+      text-align: right;
+    }
 
-    /* thinking */
     .thinking-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: flex-start;
       animation: fadeUp 0.2s ease forwards;
     }
@@ -315,8 +525,8 @@
     .thinking-bubble {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 4px 16px 16px 16px;
-      padding: 14px 18px;
+      border-radius: 4px 14px 14px 14px;
+      padding: 13px 16px;
       display: flex;
       gap: 5px;
       align-items: center;
@@ -329,33 +539,47 @@
       background: var(--accent2);
       animation: pulse 1.3s infinite ease-in-out;
     }
-    .tdot:nth-child(2) { animation-delay: 0.18s; }
-    .tdot:nth-child(3) { animation-delay: 0.36s; }
 
-    @keyframes pulse {
-      0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-      40%            { opacity: 1;   transform: scale(1); }
+    .tdot:nth-child(2) {
+      animation-delay: .18s;
     }
 
-    /* ── INPUT AREA ── */
+    .tdot:nth-child(3) {
+      animation-delay: .36s;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      80%,
+      100% {
+        opacity: .2;
+        transform: scale(.8);
+      }
+
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* INPUT */
     .input-wrap {
-      position: relative;
-      z-index: 10;
-      padding: 16px 24px 24px;
+      padding: 12px 20px 20px;
       background: linear-gradient(to top, var(--bg) 70%, transparent);
       flex-shrink: 0;
     }
 
     .input-box {
-      max-width: 740px;
+      max-width: 700px;
       margin: 0 auto;
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: flex-end;
       background: var(--surface);
       border: 1px solid var(--border2);
-      border-radius: 18px;
-      padding: 10px 10px 10px 18px;
+      border-radius: 16px;
+      padding: 9px 9px 9px 16px;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
 
@@ -371,24 +595,22 @@
       outline: none;
       color: var(--text);
       font-family: 'DM Sans', sans-serif;
-      font-size: 14.5px;
-      font-weight: 400;
+      font-size: 14px;
       line-height: 1.55;
       resize: none;
-      max-height: 130px;
+      max-height: 120px;
       overflow-y: auto;
       padding: 2px 0;
     }
 
-    textarea::placeholder { color: var(--muted2); }
-
-    textarea::-webkit-scrollbar { width: 3px; }
-    textarea::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    textarea::placeholder {
+      color: var(--muted2);
+    }
 
     .send-btn {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
       border: none;
       background: var(--accent);
       color: #fff;
@@ -397,49 +619,95 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      opacity: 0.35;
+      opacity: .35;
       transition: opacity 0.2s, transform 0.15s, background 0.2s;
     }
 
-    .send-btn:not(:disabled) { opacity: 1; }
-    .send-btn:not(:disabled):hover  { background: var(--accent2); transform: scale(1.05); }
-    .send-btn:not(:disabled):active { transform: scale(0.95); }
-    .send-btn:disabled { cursor: default; }
+    .send-btn:not(:disabled) {
+      opacity: 1;
+    }
 
-    .send-btn svg { width: 16px; height: 16px; }
+    .send-btn:not(:disabled):hover {
+      background: var(--accent2);
+      transform: scale(1.05);
+    }
+
+    .send-btn:not(:disabled):active {
+      transform: scale(0.95);
+    }
+
+    .send-btn:disabled {
+      cursor: default;
+    }
 
     .hint {
-      max-width: 740px;
-      margin: 8px auto 0;
-      font-size: 11.5px;
+      max-width: 700px;
+      margin: 6px auto 0;
+      font-size: 11px;
       color: var(--muted2);
       font-weight: 300;
-      letter-spacing: 0.2px;
       padding: 0 4px;
     }
 
-    /* ── MARKDOWN RENDERED INSIDE BOT BUBBLES ── */
-    .md-body { line-height: 1.7; }
-    .md-body p { margin: 0 0 10px; }
-    .md-body p:last-child { margin-bottom: 0; }
-    .md-body strong { font-weight: 500; color: var(--accent2); }
-    .md-body em { font-style: italic; color: var(--muted); }
-    .md-body h1,.md-body h2,.md-body h3 {
+    /* MARKDOWN */
+    .md-body {
+      line-height: 1.7;
+    }
+
+    .md-body p {
+      margin: 0 0 10px;
+    }
+
+    .md-body p:last-child {
+      margin-bottom: 0;
+    }
+
+    .md-body strong {
+      font-weight: 500;
+      color: var(--accent2);
+    }
+
+    .md-body em {
+      font-style: italic;
+      color: var(--muted);
+    }
+
+    .md-body h1,
+    .md-body h2,
+    .md-body h3 {
       font-family: 'Syne', sans-serif;
       font-weight: 700;
       color: var(--text);
       margin: 14px 0 6px;
       line-height: 1.3;
     }
-    .md-body h1 { font-size: 17px; }
-    .md-body h2 { font-size: 15px; }
-    .md-body h3 { font-size: 14px; }
-    .md-body ul, .md-body ol {
-      padding-left: 20px;
+
+    .md-body h1 {
+      font-size: 16px;
+    }
+
+    .md-body h2 {
+      font-size: 15px;
+    }
+
+    .md-body h3 {
+      font-size: 14px;
+    }
+
+    .md-body ul,
+    .md-body ol {
+      padding-left: 18px;
       margin: 8px 0 10px;
     }
-    .md-body li { margin-bottom: 4px; }
-    .md-body li::marker { color: var(--accent2); }
+
+    .md-body li {
+      margin-bottom: 4px;
+    }
+
+    .md-body li::marker {
+      color: var(--accent2);
+    }
+
     .md-body blockquote {
       border-left: 2px solid var(--accent);
       margin: 10px 0;
@@ -449,15 +717,17 @@
       background: var(--surface2);
       border-radius: 0 8px 8px 0;
     }
+
     .md-body code {
       font-family: 'Courier New', monospace;
-      font-size: 13px;
+      font-size: 12.5px;
       background: var(--surface2);
       border: 1px solid var(--border2);
       color: var(--accent2);
       padding: 1px 6px;
-      border-radius: 5px;
+      border-radius: 4px;
     }
+
     .md-body pre {
       background: var(--surface2);
       border: 1px solid var(--border2);
@@ -466,25 +736,33 @@
       overflow-x: auto;
       margin: 10px 0;
     }
+
     .md-body pre code {
       background: none;
       border: none;
       padding: 0;
       color: var(--text);
-      font-size: 13px;
+      font-size: 12.5px;
     }
-    .md-body a { color: var(--accent2); text-decoration: underline; }
+
+    .md-body a {
+      color: var(--accent2);
+      text-decoration: underline;
+    }
+
     .md-body hr {
       border: none;
       border-top: 1px solid var(--border2);
       margin: 12px 0;
     }
+
     .md-body table {
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
       margin: 10px 0;
     }
+
     .md-body th {
       background: var(--surface2);
       color: var(--accent2);
@@ -493,32 +771,463 @@
       border: 1px solid var(--border2);
       text-align: left;
     }
+
     .md-body td {
       padding: 6px 10px;
       border: 1px solid var(--border);
       color: var(--text);
     }
+
+    /* SOURCES PANEL */
+    .sources-panel {
+      position: fixed;
+      top: 60px;
+      right: 0;
+      bottom: 0;
+      width: var(--panel-w);
+      background: var(--surface);
+      border-left: 1px solid var(--border2);
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sources-panel.open {
+      transform: translateX(0);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .panel-title svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--accent2);
+    }
+
+    .panel-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--muted2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .panel-close:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    .panel-close svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .add-source-area {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .add-source-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted2);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+
+    .source-type-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .src-tab {
+      flex: 1;
+      padding: 5px 0;
+      border-radius: 7px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      font-size: 11.5px;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: center;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .src-tab.active {
+      background: rgba(124, 111, 239, 0.15);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    .url-input-wrap {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 8px 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .url-input-wrap:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .url-input-wrap svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--muted2);
+      flex-shrink: 0;
+    }
+
+    .url-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .url-input::placeholder {
+      color: var(--muted2);
+    }
+
+    .add-url-btn {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .add-url-btn:hover {
+      background: var(--accent2);
+      transform: scale(1.05);
+    }
+
+    .add-url-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .url-error {
+      font-size: 11.5px;
+      color: var(--danger);
+      margin-top: 6px;
+      display: none;
+    }
+
+    .sources-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 12px;
+    }
+
+    .sources-list::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .sources-list::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 3px;
+    }
+
+    .no-sources {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 40px 16px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .no-sources svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--muted2);
+    }
+
+    .no-sources p {
+      font-size: 13px;
+      font-weight: 300;
+      line-height: 1.5;
+    }
+
+    .src-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      animation: fadeUp 0.2s ease forwards;
+      transition: border-color 0.15s;
+      position: relative;
+    }
+
+    .src-item:hover {
+      border-color: var(--border2);
+    }
+
+    .src-item.loading {
+      opacity: 0.65;
+    }
+
+    .src-thumb {
+      width: 46px;
+      height: 34px;
+      border-radius: 7px;
+      background: var(--surface3);
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .src-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .src-thumb-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .src-thumb-placeholder svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .yt-badge {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: #ff0000;
+      border-radius: 3px;
+      width: 13px;
+      height: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .yt-badge svg {
+      width: 7px;
+      height: 7px;
+      fill: #fff;
+    }
+
+    .src-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .src-title {
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+      margin-bottom: 2px;
+    }
+
+    .src-domain {
+      font-size: 11px;
+      color: var(--muted2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .src-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+
+    .src-badge.youtube {
+      background: rgba(255, 0, 0, 0.12);
+      color: #ff5555;
+    }
+
+    .src-badge.url {
+      background: rgba(124, 111, 239, 0.12);
+      color: var(--accent2);
+    }
+
+    .src-loading-bar {
+      height: 2px;
+      border-radius: 2px;
+      background: var(--border2);
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .src-loading-fill {
+      height: 100%;
+      background: var(--accent2);
+      animation: loadSlide 1.4s ease-in-out infinite;
+      border-radius: 2px;
+    }
+
+    @keyframes loadSlide {
+      0% {
+        width: 0;
+        margin-left: 0;
+      }
+
+      50% {
+        width: 60%;
+        margin-left: 20%;
+      }
+
+      100% {
+        width: 0;
+        margin-left: 100%;
+      }
+    }
+
+    .src-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .src-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted2);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .src-btn:hover {
+      background: var(--surface3);
+      color: var(--text);
+    }
+
+    .src-btn.del:hover {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--danger);
+    }
+
+    .src-btn svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    .panel-footer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .panel-footer p {
+      font-size: 11px;
+      color: var(--muted2);
+      font-weight: 300;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .panel-footer span {
+      color: var(--accent2);
+      font-weight: 500;
+    }
   </style>
 </head>
+
 <body>
 
   <!-- NAV -->
   <nav>
-    <div class="nav-left">
+    <a class="nav-left" href="/">
       <div class="logo-icon">
-        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="6" fill="#7c6fef" opacity="0.9"/>
-          <circle cx="4"  cy="10" r="3" fill="#a89bf5" opacity="0.7"/>
-          <circle cx="28" cy="10" r="3" fill="#a89bf5" opacity="0.7"/>
-          <circle cx="4"  cy="22" r="3" fill="#a89bf5" opacity="0.7"/>
-          <circle cx="28" cy="22" r="3" fill="#a89bf5" opacity="0.7"/>
-          <line x1="10" y1="14" x2="4"  y2="10"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
-          <line x1="22" y1="14" x2="28" y2="10"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
-          <line x1="10" y1="18" x2="4"  y2="22"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
-          <line x1="22" y1="18" x2="28" y2="22"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
+        <svg viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="6" fill="#7c6fef" opacity="0.9" />
+          <circle cx="4" cy="10" r="3" fill="#a89bf5" opacity="0.7" />
+          <circle cx="28" cy="10" r="3" fill="#a89bf5" opacity="0.7" />
+          <circle cx="4" cy="22" r="3" fill="#a89bf5" opacity="0.7" />
+          <circle cx="28" cy="22" r="3" fill="#a89bf5" opacity="0.7" />
+          <line x1="10" y1="14" x2="4" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
+          <line x1="22" y1="14" x2="28" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
+          <line x1="10" y1="18" x2="4" y2="22" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
+          <line x1="22" y1="18" x2="28" y2="22" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
         </svg>
       </div>
-      <div class="brand">Syn<span>apse</span><sup class="brand-tag">AI</sup></div>
+      <div class="brand">Syn<span>apse</span><sup>AI</sup></div>
+    </a>
+
+    <div class="nav-center">
+      <div class="notebook-chip">
+        <svg fill="none" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        <span id="notebook-name">General Chat</span>
+      </div>
     </div>
 
     <div class="nav-right">
@@ -526,233 +1235,533 @@
         <div class="status-dot off" id="status-dot"></div>
         <span id="status-text">Connecting</span>
       </div>
-      <div class="profile-btn" title="Profile (coming soon)">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+
+      <button class="sources-nav-btn" id="sources-toggle-btn" onclick="togglePanel()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
         </svg>
+        Sources
+        <span class="src-count" id="src-count">0</span>
+      </button>
+
+      <a href="/authentication/" id="login-btn" class="login-btn" style="display:none;">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h6v18h-6M10 17l5-5-5-5M15 12H3" />
+        </svg>
+        Login
+      </a>
+
+      <div class="profile-wrap" id="profile-wrap" style="display:none;">
+        <div class="profile-btn" id="profile-btn" onclick="toggleDropdown(event)">
+          <span id="avatar-initials"></span>
+        </div>
+        <div class="profile-dropdown" id="profile-dropdown">
+          <div class="pd-header">
+            <div class="pd-avatar" id="pd-avatar"></div>
+            <div>
+              <p class="pd-name" id="pd-name"></p>
+              <p class="pd-email" id="pd-email"></p>
+            </div>
+          </div>
+          <div class="pd-divider"></div>
+          <div class="pd-item" onclick="window.location.href='/'">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Home
+          </div>
+          <div class="pd-item" onclick="alert('Settings — coming soon!')">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            Settings
+          </div>
+          <div class="pd-divider"></div>
+          <div class="pd-item danger" onclick="logout()">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+            Log out
+          </div>
+        </div>
       </div>
     </div>
   </nav>
 
-  <!-- MESSAGES -->
-  <div class="messages-wrap" id="messages-wrap">
-    <div class="messages-inner" id="messages">
+  <!-- BODY -->
+  <div class="body-wrap">
 
-      <div class="empty-state" id="empty-state">
-        <div class="big-icon">
-          <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="6" fill="#7c6fef" opacity="0.9"/>
-            <circle cx="4"  cy="10" r="3" fill="#a89bf5" opacity="0.6"/>
-            <circle cx="28" cy="10" r="3" fill="#a89bf5" opacity="0.6"/>
-            <circle cx="4"  cy="22" r="3" fill="#a89bf5" opacity="0.6"/>
-            <circle cx="28" cy="22" r="3" fill="#a89bf5" opacity="0.6"/>
-            <line x1="10" y1="14" x2="4"  y2="10"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
-            <line x1="22" y1="14" x2="28" y2="10"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
-            <line x1="10" y1="18" x2="4"  y2="22"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
-            <line x1="22" y1="18" x2="28" y2="22"  stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>
-          </svg>
+    <!-- CHAT -->
+    <div class="chat-area" id="chat-area">
+      <div class="messages-wrap" id="messages-wrap">
+        <div class="messages-inner" id="messages">
+          <div class="empty-state" id="empty-state">
+            <div class="big-icon">
+              <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="6" fill="#7c6fef" opacity="0.9" />
+                <circle cx="4" cy="10" r="3" fill="#a89bf5" opacity="0.6" />
+                <circle cx="28" cy="10" r="3" fill="#a89bf5" opacity="0.6" />
+                <circle cx="4" cy="22" r="3" fill="#a89bf5" opacity="0.6" />
+                <circle cx="28" cy="22" r="3" fill="#a89bf5" opacity="0.6" />
+                <line x1="10" y1="14" x2="4" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
+                <line x1="22" y1="14" x2="28" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
+                <line x1="10" y1="18" x2="4" y2="22" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
+                <line x1="22" y1="18" x2="28" y2="22" stroke="#7c6fef" stroke-width="1.2" opacity="0.5" />
+              </svg>
+            </div>
+            <h3>Start a conversation</h3>
+            <p>Ask Synapse anything. Add YouTube links or URLs as sources for context-aware answers.</p>
+            <p class="empty-hint">↗ Click Sources to add a YouTube link</p>
+          </div>
         </div>
-        <h3>Start a conversation</h3>
-        <p>Ask Synapse anything. Your messages are private and processed in real time.</p>
       </div>
 
+      <div class="input-wrap">
+        <div class="input-box">
+          <textarea id="msg-input" placeholder="Message Synapse…" rows="1" oninput="autoResize(this)"
+            onkeydown="handleKey(event)"></textarea>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
+        <p class="hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</p>
+      </div>
     </div>
+
+    <!-- SOURCES PANEL -->
+    <div class="sources-panel" id="sources-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="1.8">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          Sources
+        </div>
+        <button class="panel-close" onclick="togglePanel()">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="add-source-area">
+        <p class="add-source-label">Add Source</p>
+        <div class="source-type-tabs">
+          <div class="src-tab active" id="tab-yt" onclick="switchTab('youtube')">▶ YouTube</div>
+          <div class="src-tab" id="tab-url" onclick="switchTab('url')">🔗 URL</div>
+        </div>
+        <div class="url-input-wrap">
+          <svg id="url-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
+            <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
+          </svg>
+          <input class="url-input" id="url-input" type="url" placeholder="Paste YouTube URL…" autocomplete="off"
+            onkeydown="handleUrlKey(event)" oninput="clearUrlError()" />
+          <button class="add-url-btn" onclick="addSource()">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+              stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </div>
+        <p class="url-error" id="url-error"></p>
+      </div>
+
+      <div class="sources-list" id="sources-list">
+        <div class="no-sources" id="no-sources">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+          <p>No sources yet.<br />Add a YouTube link or URL above to give Synapse context.</p>
+        </div>
+      </div>
+
+      <div class="panel-footer">
+        <p>Sources are included as context with every message. <span id="src-footer-count">0 sources</span> active.</p>
+      </div>
+    </div>
+
   </div>
 
-  <!-- INPUT -->
-  <div class="input-wrap">
-    <div class="input-box">
-      <textarea id="msg-input" placeholder="Message Synapse…" rows="1"
-                oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
-      <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-             stroke-linecap="round" stroke-linejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13"/>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-        </svg>
-      </button>
-    </div>
-    <p class="hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</p>
-  </div>
+  <script>
+    /* STATE */
+    var currentNotebookId = null;
+    var currentUser = null;
+    var panelOpen = false, activeTab = 'youtube', sources = [], ws;
 
-<script>
-  var ws;
+    /* AUTH */
+    function loadAuth() {
+      try { var r = localStorage.getItem('synapse_user'); if (r) currentUser = JSON.parse(r); } catch (e) { }
 
-  function fmt() {
-    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
+      // Get notebook_id from URL query parameters
+      var urlParams = new URLSearchParams(window.location.search);
+      currentNotebookId = urlParams.get('notebook_id');
 
-  function renderMd(text) {
-    if (typeof marked !== 'undefined') {
-      return marked.parse(text, { breaks: true, gfm: true });
-    }
-    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-  }
+      renderNav();
 
-  function esc(s) {
-    return s
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/\n/g,'<br>');
-  }
-
-  function setStatus(on) {
-    var dot  = document.getElementById('status-dot');
-    var txt  = document.getElementById('status-text');
-    dot.className = 'status-dot' + (on ? '' : ' off');
-    txt.textContent = on ? 'Online' : 'Reconnecting…';
-  }
-
-  function scrollBottom() {
-    var wrap = document.getElementById('messages-wrap');
-    wrap.scrollTop = wrap.scrollHeight;
-  }
-
-  function clearEmpty() {
-    var e = document.getElementById('empty-state');
-    if (e) e.remove();
-  }
-
-  var BOT_AV =
-    '<div class="bot-av"><svg viewBox="0 0 32 32" fill="none" stroke-linecap="round">' +
-    '<circle cx="16" cy="16" r="5" fill="#7c6fef" opacity="0.9"/>' +
-    '<circle cx="4" cy="10" r="2.5" fill="#a89bf5" opacity="0.6"/>' +
-    '<circle cx="28" cy="10" r="2.5" fill="#a89bf5" opacity="0.6"/>' +
-    '<line x1="11" y1="14" x2="4" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>' +
-    '<line x1="21" y1="14" x2="28" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/>' +
-    '</svg></div>';
-
-  function appendUser(text) {
-    clearEmpty();
-    var msgs = document.getElementById('messages');
-    var row  = document.createElement('div');
-    row.className = 'msg-row user';
-    row.innerHTML =
-      '<div class="bubble user">' + esc(text) +
-      '<span class="ts">' + fmt() + '</span></div>';
-    msgs.appendChild(row);
-    scrollBottom();
-  }
-
-  function showThinking() {
-    var msgs = document.getElementById('messages');
-    var row  = document.createElement('div');
-    row.className = 'thinking-row';
-    row.id = 'thinking';
-    row.innerHTML =
-      BOT_AV +
-      '<div class="thinking-bubble">' +
-        '<span class="tdot"></span>' +
-        '<span class="tdot"></span>' +
-        '<span class="tdot"></span>' +
-      '</div>';
-    msgs.appendChild(row);
-    scrollBottom();
-  }
-
-  function hideThinking() {
-    var el = document.getElementById('thinking');
-    if (el) el.remove();
-  }
-
-  function appendBot(text) {
-    hideThinking();
-    var msgs = document.getElementById('messages');
-    var row  = document.createElement('div');
-    row.className = 'msg-row';
-    row.innerHTML =
-      BOT_AV +
-      '<div class="bubble bot"><div class="md-body">' + renderMd(text) + '</div>' +
-      '<span class="ts">' + fmt() + '</span></div>';
-    msgs.appendChild(row);
-    scrollBottom();
-  }
-
-  function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 130) + 'px';
-    var btn = document.getElementById('send-btn');
-    btn.disabled = el.value.trim() === '';
-  }
-
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
-  function sendMessage() {
-    var input = document.getElementById('msg-input');
-    var text  = input.value.trim();
-    if (!text) return;
-
-    appendUser(text);
-    showThinking();
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(text);
-    } else {
-      setTimeout(function() {
-        appendBot('Not connected to server. Make sure your FastAPI backend is running at ws://localhost:8000/ws/chat');
-      }, 900);
+      // If notebook_id exists, load notebook sources and previous chats
+      if (currentNotebookId) {
+        loadNotebookSources();
+        loadPrevChats();
+      }
     }
 
-    input.value = '';
-    input.style.height = 'auto';
-    document.getElementById('send-btn').disabled = true;
-  }
+    // Load sources for the selected notebook
+    async function loadNotebookSources() {
+      if (!currentNotebookId) return;
 
-  var msgBuffer = '';
-  var bufferTimer = null;
-  var currentBotRow = null;
+      try {
+        var response = await fetch('/notebook/sources/?notebook_id=' + encodeURIComponent(currentNotebookId), {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        var data = await response.json();
 
-  function flushBuffer() {
-    if (!msgBuffer.trim()) return;
-    var text = msgBuffer;
-    msgBuffer = '';
-    bufferTimer = null;
-    currentBotRow = null;
-
-    hideThinking();
-    var msgs = document.getElementById('messages');
-    var row  = document.createElement('div');
-    row.className = 'msg-row';
-    row.innerHTML =
-      BOT_AV +
-      '<div class="bubble bot"><div class="md-body">' + renderMd(text) + '</div>' +
-      '<span class="ts">' + fmt() + '</span></div>';
-    msgs.appendChild(row);
-    scrollBottom();
-  }
-
-  function handleChunk(chunk) {
-    var END_TOKENS = ['[DONE]', '<END>', '[END]', '<<END>>'];
-    for (var i = 0; i < END_TOKENS.length; i++) {
-      if (chunk === END_TOKENS[i]) { flushBuffer(); return; }
+        if (data && data.sources) {
+          sources = data.sources;
+          renderSources();
+          updateCount();
+        }
+      } catch (e) {
+        console.error('Error loading notebook sources:', e);
+      }
     }
 
-    msgBuffer += chunk;
+    // Load previous chats for the selected notebook
+    async function loadPrevChats() {
+      if (!currentNotebookId) return;
+      try {
+        var response = await fetch('/chat/get_prev_chat?notebook_id=' + encodeURIComponent(currentNotebookId));
+        var data = await response.json();
 
-    if (bufferTimer) clearTimeout(bufferTimer);
-    bufferTimer = setTimeout(flushBuffer, 600);
-  }
+        if (data && data.messages && data.messages.length > 0) {
+          clearEmpty();
+          var msgs = document.getElementById('messages');
 
-  function connect() {
-    try {
-      ws = new WebSocket('ws://localhost:8000/ws/chat');
-      ws.onopen    = function() { setStatus(true); };
-      ws.onmessage = function(e) { handleChunk(e.data); };
-      ws.onclose   = function() { setStatus(false); hideThinking(); flushBuffer(); setTimeout(connect, 3000); };
-      ws.onerror   = function() { setStatus(false); };
-    } catch(err) {
-      setStatus(false);
+          data.messages.forEach(function (msg) {
+            var content = msg.content || msg.message || msg.text || '';
+            var ts = msg.created_at
+              ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '';
+
+            // Normalize role: treat 'assistant' same as 'bot'
+            var rawRole = msg.sender_type || msg.sender_type || '';
+            var isUser = rawRole === 'HumanMessage' || msg.sender_type === true;
+
+            var row = document.createElement('div');
+            if (isUser) {
+              row.className = 'msg-row user';
+              row.innerHTML =
+                '<div class="bubble user">' +
+                escHtml(content) +
+                '<span class="ts">' + ts + '</span>' +
+                '</div>';
+            } else {
+              row.className = 'msg-row';
+              row.innerHTML =
+                BOT_AV +
+                '<div class="bubble bot"><div class="md-body">' +
+                renderMd(content) +
+                '</div><span class="ts">' + ts + '</span></div>';
+            }
+            msgs.appendChild(row);
+          });
+
+          scrollBottom();
+        }
+      } catch (e) {
+        console.error('Error loading previous chats:', e);
+      }
     }
-  }
+    function renderNav() {
+      var lb = document.getElementById('login-btn'), pw = document.getElementById('profile-wrap');
+      if (currentUser) {
+        lb.style.display = 'none'; pw.style.display = 'block';
+        var ini = getInitials(currentUser.name);
+        document.getElementById('avatar-initials').textContent = ini;
+        document.getElementById('pd-avatar').textContent = ini;
+        document.getElementById('pd-name').textContent = currentUser.name;
+        document.getElementById('pd-email').textContent = currentUser.email;
+      } else { lb.style.display = 'flex'; pw.style.display = 'none'; }
+    }
+    function getInitials(n) { return n.trim().split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase(); }
+    function toggleDropdown(e) { e && e.stopPropagation(); document.getElementById('profile-dropdown').classList.toggle('open'); }
+    function logout() { localStorage.removeItem('synapse_user'); currentUser = null; renderNav(); document.getElementById('profile-dropdown').classList.remove('open'); }
+    document.addEventListener('click', function () { var dd = document.getElementById('profile-dropdown'); if (dd) dd.classList.remove('open'); });
 
-  connect();
-</script>
+    /* PANEL */
+    function togglePanel() {
+      panelOpen = !panelOpen;
+      document.getElementById('sources-panel').classList.toggle('open', panelOpen);
+      document.getElementById('chat-area').classList.toggle('panel-open', panelOpen);
+      document.getElementById('sources-toggle-btn').classList.toggle('active', panelOpen);
+    }
+
+    /* TABS */
+    function switchTab(type) {
+      activeTab = type;
+      document.getElementById('tab-yt').classList.toggle('active', type === 'youtube');
+      document.getElementById('tab-url').classList.toggle('active', type === 'url');
+      clearUrlError();
+      var input = document.getElementById('url-input');
+      var icon = document.getElementById('url-icon');
+      if (type === 'youtube') {
+        input.placeholder = 'Paste YouTube URL…';
+        icon.innerHTML = '<path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/>';
+      } else {
+        input.placeholder = 'Paste any URL…';
+        icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>';
+      }
+      input.value = ''; input.focus();
+    }
+
+    function clearUrlError() { var e = document.getElementById('url-error'); e.style.display = 'none'; e.textContent = ''; }
+    function showUrlError(msg) { var e = document.getElementById('url-error'); e.textContent = msg; e.style.display = 'block'; }
+    function handleUrlKey(e) { if (e.key === 'Enter') { e.preventDefault(); addSource(); } }
+
+    /* SOURCES */
+    function isYouTubeUrl(u) { return /^https?:\/\/(www\.)?(youtube\.com\/watch|youtu\.be\/)/.test(u); }
+    function getYtId(u) { var m = u.match(/(?:v=|youtu\.be\/)([^&?#\s]+)/); return m ? m[1] : null; }
+    function isValidUrl(u) { try { new URL(u); return true; } catch (e) { return false; } }
+
+    function addSource() {
+      var raw = document.getElementById('url-input').value.trim();
+      clearUrlError();
+      if (!raw) { showUrlError('Please paste a URL first.'); return; }
+      if (!isValidUrl(raw)) { showUrlError('That doesn\'t look like a valid URL.'); return; }
+      if (activeTab === 'youtube' && !isYouTubeUrl(raw)) {
+        showUrlError('Please paste a YouTube URL (youtube.com/watch or youtu.be).'); return;
+      }
+      if (sources.find(function (s) { return s.url === raw; })) {
+        showUrlError('This source is already added.'); return;
+      }
+
+      var type = isYouTubeUrl(raw) ? 'youtube' : 'url';
+      var ytId = type === 'youtube' ? getYtId(raw) : null;
+      var src = {
+        id: 'src_' + Date.now(),
+        notebook_id: currentNotebookId,
+        source_type: type,
+        url: raw,
+        title: 'Loading…',
+        loading: true
+      };
+
+      sources.push(src);
+      document.getElementById('url-input').value = '';
+      renderSources();
+      updateCount();
+
+      // Call backend API to add source
+      fetch('/notebook/sources/add/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.user_id,
+          notebook_id: currentNotebookId,
+          source_type: type,
+          url: raw,
+          title: 'Source ' + (sources.length)
+        })
+      })
+        .then(async function (res) {
+          if (!res.ok) {
+            var err = await res.json();
+            throw new Error(err.detail || 'Failed to add source');
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          // Update the source with real data from backend
+          var addedSrc = sources.find(function (s) { return s.url === raw; });
+          if (addedSrc) {
+            addedSrc.loading = false;
+            addedSrc.title = data || 'Source ' + sources.length;
+          }
+          renderSources();
+        })
+        .catch(function (e) {
+          console.error('Error adding source:', e);
+          showUrlError(e.message);
+          sources = sources.filter(function (s) { return s.url !== raw; });
+          renderSources();
+          updateCount();
+        });
+    }
+
+    function removeSource(id) {
+      var srcToRemove = sources.find(function (s) { return s.source_id === id; });
+      if (!srcToRemove) return;
+
+      sources = sources.filter(function (s) { return s.source_id !== id; });
+
+      // Call backend API to delete source
+      if (srcToRemove.source_id) {
+        fetch('/notebook/sources/delete/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notebook_id: currentNotebookId, source_id: srcToRemove.source_id })
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            console.log('Source deleted:', data);
+          })
+          .catch(function (e) {
+            console.error('Error deleting source:', e);
+          });
+      }
+
+      renderSources();
+      updateCount();
+    }
+
+    function updateCount() {
+      var n = sources.length;
+      document.getElementById('src-count').textContent = n;
+      document.getElementById('src-footer-count').textContent = n + ' source' + (n !== 1 ? 's' : '');
+    }
+
+    function renderSources() {
+      var list = document.getElementById('sources-list');
+      var noSrc = document.getElementById('no-sources');
+      Array.from(list.querySelectorAll('.src-item')).forEach(function (el) { el.remove(); });
+
+      if (sources.length === 0) { noSrc.style.display = 'flex'; return; }
+      noSrc.style.display = 'none';
+
+      sources.forEach(function (src) {
+        var item = document.createElement('div');
+        item.className = 'src-item' + (src.loading ? ' loading' : '');
+
+        var thumb = '';
+        if (src.source_type === 'youtube' && src.file_path) {
+          thumb = '<div class="src-thumb"><img src="' + src.file_path + '" alt="" onerror="this.parentNode.innerHTML=\'<div class=src-thumb-placeholder><svg fill=none viewBox=\\\"0 0 24 24\\\" stroke=var(--muted2) stroke-width=1.5><path d=\\\"M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z\\\"/><polygon points=\\\"9.75 15.02 15.5 12 9.75 8.98 9.75 15.02\\\"/></svg></div>\'">' +
+            '<div class="yt-badge"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>' +
+            '</div>';
+        } else {
+          var iconPath = src.source_type === 'youtube'
+            ? '<path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/>'
+            : '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>';
+          thumb = '<div class="src-thumb"><div class="src-thumb-placeholder"><svg fill="none" viewBox="0 0 24 24" stroke="var(--muted2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + iconPath + '</svg></div></div>';
+        }
+
+        var domain = ''; try { domain = new URL(src.file_path).hostname.replace('www.', ''); } catch (e) { domain = src.url.slice(0, 25); }
+        var badge = '<span class="src-badge ' + src.source_type + '">' + (src.source_type === 'youtube' ? '▶ YouTube' : '🔗 URL') + '</span>';
+        var loadBar = src.loading ? '<div class="src-loading-bar"><div class="src-loading-fill"></div></div>' : '';
+
+        item.innerHTML =
+          thumb +
+          '<div class="src-info">' +
+          '<div class="src-title">' + escHtml(src.original_filename) + '</div>' +
+          '<div class="src-domain">' + escHtml(domain) + '</div>' +
+          badge + loadBar +
+          '</div>' +
+          '<div class="src-actions">' +
+          '<button class="src-btn" title="Open" onclick="window.open(\'' + escAttr(src.file_path) + '\',\'_blank\')">' +
+          '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+          '</button>' +
+          '<button class="src-btn del" title="Remove" onclick="removeSource(\'' + src.source_id + '\')">' +
+          '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>' +
+          '</button>' +
+          '</div>';
+
+        list.appendChild(item);
+      });
+    }
+
+    /* CHAT */
+    function fmt() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    function renderMd(t) { return typeof marked !== 'undefined' ? marked.parse(t, { breaks: true, gfm: true }) : escHtml(t).replace(/\n/g, '<br>'); }
+    function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function escAttr(s) { return String(s).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+    function setStatus(on) { document.getElementById('status-dot').className = 'status-dot' + (on ? '' : ' off'); document.getElementById('status-text').textContent = on ? 'Online' : 'Reconnecting…'; }
+    function scrollBottom() { var w = document.getElementById('messages-wrap'); w.scrollTop = w.scrollHeight; }
+    function clearEmpty() { var e = document.getElementById('empty-state'); if (e) e.remove(); }
+
+    var BOT_AV = '<div class="bot-av"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="5" fill="#7c6fef" opacity="0.9"/><circle cx="4" cy="10" r="2.5" fill="#a89bf5" opacity="0.6"/><circle cx="28" cy="10" r="2.5" fill="#a89bf5" opacity="0.6"/><line x1="11" y1="14" x2="4" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/><line x1="21" y1="14" x2="28" y2="10" stroke="#7c6fef" stroke-width="1.2" opacity="0.5"/></svg></div>';
+
+    function appendUser(text) { clearEmpty(); var msgs = document.getElementById('messages'); var row = document.createElement('div'); row.className = 'msg-row user'; row.innerHTML = '<div class="bubble user">' + escHtml(text) + '<span class="ts">' + fmt() + '</span></div>'; msgs.appendChild(row); scrollBottom(); }
+    function showThinking() { var msgs = document.getElementById('messages'); var row = document.createElement('div'); row.className = 'thinking-row'; row.id = 'thinking'; row.innerHTML = BOT_AV + '<div class="thinking-bubble"><span class="tdot"></span><span class="tdot"></span><span class="tdot"></span></div>'; msgs.appendChild(row); scrollBottom(); }
+    function hideThinking() { var el = document.getElementById('thinking'); if (el) el.remove(); }
+
+    var msgBuffer = '', bufferTimer = null;
+    function flushBuffer() { if (!msgBuffer.trim()) return; var text = msgBuffer; msgBuffer = ''; bufferTimer = null; hideThinking(); var msgs = document.getElementById('messages'); var row = document.createElement('div'); row.className = 'msg-row'; row.innerHTML = BOT_AV + '<div class="bubble bot"><div class="md-body">' + renderMd(text) + '</div><span class="ts">' + fmt() + '</span></div>'; msgs.appendChild(row); scrollBottom(); }
+    function handleChunk(chunk) { var ENDS = ['[DONE]', '<END>', '[END]', '<<END>>']; for (var i = 0; i < ENDS.length; i++) { if (chunk === ENDS[i]) { flushBuffer(); return; } } msgBuffer += chunk; if (bufferTimer) clearTimeout(bufferTimer); bufferTimer = setTimeout(flushBuffer, 600); }
+
+    function buildPayload(text) {
+      if (sources.length === 0) return text;
+      var urls = sources.map(function (s, i) { return (i + 1) + '. ' + (s.type === 'youtube' ? '[YouTube] ' : '') + s.url; }).join('\n');
+      return text;
+    }
+
+    function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; document.getElementById('send-btn').disabled = el.value.trim() === ''; }
+    function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+    function sendMessage() {
+      var input = document.getElementById('msg-input');
+      var text = input.value.trim(); if (!text) return;
+      appendUser(text); showThinking();
+      var payload = buildPayload(text);
+      if (ws && ws.readyState === WebSocket.OPEN) { ws.send(payload); }
+      else {
+        setTimeout(function () { hideThinking(); var msgs = document.getElementById('messages'); var row = document.createElement('div'); row.className = 'msg-row'; row.innerHTML = BOT_AV + '<div class="bubble bot"><div class="md-body">Not connected — start your FastAPI server at <code>ws://localhost:8000/ws/chat</code></div><span class="ts">' + fmt() + '</span></div>'; msgs.appendChild(row); scrollBottom(); }, 900);
+      }
+      input.value = ''; input.style.height = 'auto'; document.getElementById('send-btn').disabled = true;
+    }
+
+    function connect() {
+      try {
+        var wsUrl = 'ws://localhost:8000/ws/chat';
+        var params = [];
+        if (currentNotebookId) params.push('notebook_id=' + encodeURIComponent(currentNotebookId));
+        if (sources && sources.length > 0) {
+          var sids = sources.map(function (s) { return s.source_id; }).join(',');
+          params.push('sources_ids=' + encodeURIComponent(sids));
+        }
+        if (params.length > 0) wsUrl += '?' + params.join('&');
+        ws = new WebSocket(wsUrl);
+        ws.onopen = function () { setStatus(true); };
+        ws.onmessage = function (e) { handleChunk(e.data); };
+        ws.onclose = function () { setStatus(false); hideThinking(); flushBuffer(); setTimeout(connect, 3000); };
+        ws.onerror = function () { setStatus(false); };
+      } catch (e) { setStatus(false); }
+    }
+
+    // Read notebook name from ?nb= param
+    (function () {
+      var p = new URLSearchParams(window.location.search), nb = p.get('nb');
+      if (nb) document.getElementById('notebook-name').textContent = decodeURIComponent(nb);
+    })();
+
+    loadAuth();
+    connect();
+  </script>
 </body>
+
 </html>
