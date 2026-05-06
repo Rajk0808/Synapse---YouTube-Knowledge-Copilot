@@ -22,11 +22,13 @@ jobs:
           SUPA_BASE_KEY: ${{ secrets.SUPABASE_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           HUGGINGFACEHUB_API_TOKEN: ${{ secrets.HUGGINGFACEHUB_API_TOKEN }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
           docker run \
             --env OPENROUTER_API_KEY=$OPENROUTER_API_KEY \
             --env SUPABASE_URL=$SUPABASE_URL \
             --env SUPA_BASE_KEY=$SUPABASE_KEY \
             --env PINECONE_API_KEY=$PINECONE_API_KEY \
+            --env HUGGINGFACEHUB_API_TOKEN=$HUGGINGFACEHUB_API_TOKEN \
             --env HUGGINGFACEHUB_API_TOKEN=$HUGGINGFACEHUB_API_TOKEN \
             my-app pytest --tb=short -q
