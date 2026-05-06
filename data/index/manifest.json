@@ -1,0 +1,13 @@
+{
+  "documents": {
+    "3afb6067e3c6a89c": {
+      "document_path": "documents/3afb6067e3c6a89c.json",
+      "vectors_path": "vectors/3afb6067e3c6a89c.npy",
+      "vector_meta_path": "vectors/3afb6067e3c6a89c_meta.json",
+      "keyword_path": "keyword/3afb6067e3c6a89c_bm25.json",
+      "chunk_count": 3,
+      "vector_count": 3,
+      "updated_at": "2026-04-09T10:17:52.216737+00:00"
+    }
+  }
+}
