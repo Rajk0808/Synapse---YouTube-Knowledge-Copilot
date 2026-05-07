@@ -138,4 +138,4 @@ youtube-transcript-api==1.2.4
 yt-dlp-get-oauth2
 yt-dlp==2026.3.17
 zstandard==0.25.0
-supabase-py==2.29.0
+supadata==1.6.0
