@@ -303,23 +303,28 @@ class Utils:
     # ── Transcript helpers ────────────────────────────────────────────────────
 
     def _fetch_transcript_items(self, video_id: str, language_priority: list[str]) -> list[dict]:
-        logger.info('Fetching transcript items. File : input_ingestion.py, Line : 411.')
-        api = YouTubeTranscriptApi()
-        logger.info('api init done. File : input_ingestion.py, Line : 412.')
-        transcript_obj = api.fetch(video_id, languages=language_priority)
-        logger.info('transcript fetched done. File : input_ingestion.py, Line : 413.')
-        if hasattr(transcript_obj, "to_raw_data"):
+        try:
+            logger.info('Fetching transcript items. File : input_ingestion.py, Line : 411.')
+            api = YouTubeTranscriptApi()
+            logger.info('api init done. File : input_ingestion.py, Line : 412.')
+            transcript_obj = api.fetch(video_id, languages=language_priority)
+            logger.info('transcript fetched done. File : input_ingestion.py, Line : 413.')
+            if hasattr(transcript_obj, "to_raw_data"):
+                logger.info('to_raw_data done. File : input_ingestion.py, Line : 415.')
+                return transcript_obj.to_raw_data()
             logger.info('to_raw_data done. File : input_ingestion.py, Line : 415.')
-            return transcript_obj.to_raw_data()
-        logger.info('to_raw_data done. File : input_ingestion.py, Line : 415.')
-        return [
-            {
-                "text": getattr(item, "text", ""),
-                "start": getattr(item, "start", 0.0),
-                "duration": getattr(item, "duration", 0.0),
-            }
-            for item in transcript_obj
-        ]
+            return [
+                {
+                    "text": getattr(item, "text", ""),
+                    "start": getattr(item, "start", 0.0),
+                    "duration": getattr(item, "duration", 0.0),
+                }
+                for item in transcript_obj
+            ]
+        except Exception as e:
+            if isinstance(e,IpBlocked):
+                logger.error(f'Error in Fetching Transcript, File : input_ingestion.py, line : 326, error : {e}')
+                raise ValueError('IP Blocked.')
 
     def _format_seconds(self, total_seconds: float) -> str:
         """Convert seconds to HH:MM:SS.mmm format."""
@@ -329,69 +334,6 @@ class Utils:
         hours_part = milliseconds // 3600000
         millis_part = milliseconds % 1000
         return f"{hours_part:02}:{minutes_part:02}:{seconds_part:02}.{millis_part:03}"
-
-    def extract_transcript(self, url: str, languages: list[str] | None = None) -> str:
-        """
-        Extract plain transcript text (no timestamps).
-
-        Returns:
-            str: Full transcript as a single string.
-        """
-        video_id = self._extract_video_id(url)
-        if not video_id:
-            raise ValueError("Invalid YouTube URL. Could not extract video ID.")
-
-        language_priority = languages or ["en"]
-
-        try:
-            transcript_items = self._fetch_transcript_items(video_id, language_priority)
-            return " ".join(
-                item.get("text", "") for item in transcript_items if item.get("text")
-            )
-        except (TranscriptsDisabled, NoTranscriptFound) as exc:
-            # Try to fetch subtitles using yt-dlp as a fallback when YouTube captions are unavailable
-            try:
-                from yt_dlp import YoutubeDL
-                ydl_opts = {
-                    "skip_download": True,
-                    "writesubtitles": True,
-                    "subtitleslangs": language_priority,
-                    "quiet": True,
-                }
-                with YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
-                    subs = info.get("subtitles", {})
-                    # Prefer the first requested language that exists
-                    for lang in language_priority:
-                        if lang in subs:
-                            # subtitles are provided as a list of dicts with 'url'
-                            sub_url = subs[lang][0]["url"]
-                            # Fetch the subtitle file
-                            import requests
-                            sub_resp = requests.get(sub_url, timeout=10)
-                            sub_resp.raise_for_status()
-                            # Simple extraction of text from VTT/TTML (strip timestamps and markup)
-                            import re
-                            text = re.sub(r"\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}", "", sub_resp.text)
-                            text = re.sub(r"<[^>]+>", "", text)  # remove any HTML/TTML tags
-                            text = re.sub(r"\s+", " ", text).strip()
-                            if text:
-                                return text
-            except Exception as yt_exc:
-                # Log the secondary failure and re‑raise the original exception for consistent API response
-                logger.warning(f"yt-dlp subtitle fallback failed for video {video_id}: {yt_exc}")
-                raise ValueError(
-                        "Transcript is not available for this video and yt-dlp fallback also failed. "
-                        "The video might have captions disabled, no captions in the requested languages, "
-                        "be too short, or require YouTube login to access. "
-                        f"Original error: {exc}" ) from exc
-        except (IpBlocked, RequestBlocked) as exc:
-            raise ValueError(
-                "YouTube is blocking transcript requests from this IP/network right now. "
-                "Try again later or run from a different network."
-            ) from exc
-        except VideoUnavailable as exc:
-            raise ValueError("Video is unavailable or private.") from exc
 
     def extract_time_aware_transcript(
         self, url: str, languages: list[str] | None = None
