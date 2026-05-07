@@ -347,10 +347,13 @@ class Utils:
             text = item.get("text", "").strip()
             if not text:
                 continue
+            end_sec = start_sec + duration_sec
             segments.append({
                 "text": text,
                 "start": start_sec,
                 "duration": duration_sec,
+                "end": end_sec,
+                "timecode": f"{self._format_seconds(start_sec)} --> {self._format_seconds(end_sec)}",
             })
 
         if not segments:
