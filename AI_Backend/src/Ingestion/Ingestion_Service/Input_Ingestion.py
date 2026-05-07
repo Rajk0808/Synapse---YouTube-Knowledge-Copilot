@@ -1,7 +1,8 @@
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 import os
-from typing import Any, cast
+import logging
+logger = logging.getLogger(__name__)
 from googleapiclient.discovery import build
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api import (
@@ -46,6 +47,7 @@ class Utils:
 
     def _extract_video_id(self, url: str) -> str:
         """Extracts a YouTube video ID from common URL formats."""
+        logger.info('Extracting video ID. File : input_ingestion.py, Line : 401.')
         parsed = urlparse(url)
 
         if parsed.netloc in {"youtu.be", "www.youtu.be"}:
@@ -58,11 +60,12 @@ class Utils:
                 return parsed.path.split("/shorts/", 1)[1].split("/", 1)[0]
             if parsed.path.startswith("/embed/"):
                 return parsed.path.split("/embed/", 1)[1].split("/", 1)[0]
-
+        logger.info('Successfully extracted video ID. File : input_ingestion.py, Line : 409.')
         return ""
 
     def _extract_playlist_id(self, url: str) -> str:
         """Extracts a YouTube playlist ID from a URL."""
+        logger.info('Extracting playlist ID. File : input_ingestion.py, Line : 414.')
         parsed = urlparse(url)
         return parse_qs(parsed.query).get("list", [""])[0]
 
@@ -300,12 +303,15 @@ class Utils:
     # ── Transcript helpers ────────────────────────────────────────────────────
 
     def _fetch_transcript_items(self, video_id: str, language_priority: list[str]) -> list[dict]:
+        logger.info('Fetching transcript items. File : input_ingestion.py, Line : 411.')
         api = YouTubeTranscriptApi()
+        logger.info('api init done. File : input_ingestion.py, Line : 412.')
         transcript_obj = api.fetch(video_id, languages=language_priority)
-    
+        logger.info('transcript fetched done. File : input_ingestion.py, Line : 413.')
         if hasattr(transcript_obj, "to_raw_data"):
+            logger.info('to_raw_data done. File : input_ingestion.py, Line : 415.')
             return transcript_obj.to_raw_data()
-    
+        logger.info('to_raw_data done. File : input_ingestion.py, Line : 415.')
         return [
             {
                 "text": getattr(item, "text", ""),
@@ -371,16 +377,14 @@ class Utils:
                             text = re.sub(r"\s+", " ", text).strip()
                             if text:
                                 return text
-                    # If no subtitles found for any language, fall through to original error
-                raise
             except Exception as yt_exc:
                 # Log the secondary failure and re‑raise the original exception for consistent API response
                 logger.warning(f"yt-dlp subtitle fallback failed for video {video_id}: {yt_exc}")
-            raise ValueError(
-                    "Transcript is not available for this video and yt-dlp fallback also failed. "
-                    "The video might have captions disabled, no captions in the requested languages, "
-                    "be too short, or require YouTube login to access. "
-                    f"Original error: {exc}" ) from exc
+                raise ValueError(
+                        "Transcript is not available for this video and yt-dlp fallback also failed. "
+                        "The video might have captions disabled, no captions in the requested languages, "
+                        "be too short, or require YouTube login to access. "
+                        f"Original error: {exc}" ) from exc
         except (IpBlocked, RequestBlocked) as exc:
             raise ValueError(
                 "YouTube is blocking transcript requests from this IP/network right now. "
@@ -398,13 +402,16 @@ class Utils:
         Returns:
             list[dict]: Segments with text/start/end/duration/timecode fields.
         """
+        logger.info('Extracting time aware transcript. File : input_ingestion.py, Line : 400.') 
         video_id = self._extract_video_id(url)
         if not video_id:
+            logger.error('Invalid YouTube URL. Could not extract video ID. File : input_ingestion.py, Line : 405.')
             raise ValueError("Invalid YouTube URL. Could not extract video ID.")
 
         language_priority = languages or ["en"]
 
         try:
+            logger.info('Fetching transcript items. File : input_ingestion.py, Line : 411.')
             transcript_items = self._fetch_transcript_items(video_id, language_priority)
             segments = []
 
@@ -426,21 +433,24 @@ class Utils:
                         "timecode": f"{self._format_seconds(start)} --> {self._format_seconds(end)}",
                     }
                 )
-
+            logger.info('Extraction done, File : input_ingestion.py, line : 436')
             return segments
 
         except (TranscriptsDisabled, NoTranscriptFound) as exc:
+            logger.error('Transcript not found or disabled. File : input_ingestion.py, line : 440')
             raise ValueError(
                 "Transcript is not available for this video. "
                 f"The video likely has captions disabled, no captions in {language_priority}, "
                 "or requires YouTube login to access."
             ) from exc
         except (IpBlocked, RequestBlocked) as exc:
+            logger.error('Transcript request block , File : input_ingestion.py, line : 447')
             raise ValueError(
                 "YouTube is blocking transcript requests from this IP/network right now. "
                 "Try again later or run from a different network."
             ) from exc
         except VideoUnavailable as exc:
+            logger.error('Video is unavailable or private., File : input_ingestion.py, line : 453')
             raise ValueError("Video is unavailable or private.") from exc
 
     # ── Main entry point ──────────────────────────────────────────────────────
@@ -459,16 +469,19 @@ class Utils:
         url = data.get("url")
         
         if not url:
+            logger.info('Url not found, File input ingestion : line 461')
             raise ValueError("'url' is required in input data.")
 
         languages = data.get("languages")
         workspace_id = data.get("notebook_id")
-
+        logger.info('Starting detect url type, file input_ingestion, line : 466')
         url_type = self.detect_youtube_url_type(url)
+        logger.info('Extracting MetaData, file input_ingestion, line : 468')
         metadata = self.extract_metadata(url, url_type)
 
         metadata["type"] = url_type
         metadata["source_url"] = url
+        logger.info('Formating publishing date, file input_ingestion, line : 473')
         metadata["published_at"] = self._format_publish_date(
             metadata.get("upload_date") or metadata.get("video_upload_date")
         )
@@ -478,9 +491,11 @@ class Utils:
 
         if url_type in {"video", "video_in_playlist"}:
             try:
+                logger.info('Extrating Time aware transcript, file input_ingestion, line : 483')
                 transcript = self.extract_time_aware_transcript(url, languages)
                 metadata["transcript"] = transcript
             except ValueError as exc:
+                logger.error('Error during extraction of time aware transcript. file : input_ingestion.py, Line : 487')
                 metadata["transcript_error"] = str(exc)
 
         return metadata

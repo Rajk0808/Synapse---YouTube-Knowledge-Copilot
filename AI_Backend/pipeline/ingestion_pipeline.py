@@ -1,7 +1,8 @@
 from AI_Backend.src.Ingestion.Ingestion_Service.Input_Ingestion import Utils
 from AI_Backend.src.Ingestion.Processing_and_Enrichment.preprocessing_enrichment import preprocessing_enrichment
 from AI_Backend.src.Ingestion.store_Embeddings.store_embeddings import StoreEmbeddings
-
+import logging
+logger = logging.getLogger(__name__)
 class Ingest:
     def __init__(self):
         '''
@@ -15,4 +16,5 @@ class Ingest:
         self.chain = step1 | step2 | step3  
 
     def invoke(self,data):
+        logger.info('Started input ingestion. File : ingestion_pipeline.py, Line : 19.')
         return self.chain.invoke(data)

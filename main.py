@@ -54,90 +54,111 @@ async def cors_middleware(request: Request, call_next):
 # Web Sockets
 @app.websocket('/ws/chat')
 async def chat_ws(websocket : WebSocket, notebook_id: str = None, sources_ids: str = None): 
-    await websocket.accept()
-    rag = retrieve()
-    conv = client_db.table('Conversation').select('*').eq('notebook_id', notebook_id).execute().data
-    if not conv:        
-        insert_data = {
-            "notebook_id": notebook_id,
-            "title" : notebook_id
-        }
-        client_db.table('Conversation').insert(insert_data).execute()
-        conversation_id = client_db.table('Conversation').select('conversation_id').eq('notebook_id', notebook_id).execute()
-    else:
-        conversation_id = conv[0]['conversation_id']
-    s_ids = sources_ids.split(',') if sources_ids else []
-    data = {'notebook_id': notebook_id, 'sources_ids': s_ids}
     try:
-        last_six_messages = client_db.table('Message').select('*').eq('conversation_id',conversation_id).order('created_at', desc=True).limit(6).execute().data[::-1]
-        while True:
-            user_msg = await websocket.receive_text()
-            client_db.table('Message').insert({
-                'conversation_id' : conversation_id,
-                'sender_type' : 'HumanMessage',
-                'content' : user_msg
-            }).execute()
-            last_six_messages.append({
-                'conversation_id' : conversation_id,
-                'sender_type' : 'HumanMessage',
-                'content' : user_msg,
-                'created_at' : time.time()
-                })
-            if not notebook_id or notebook_id == 'null':
-                await websocket.send_text("Error: No notebook active. Please select a notebook to chat.")
-                continue
-            data['messages'] = last_six_messages
-            data['query'] = user_msg
-            
-            try:
-                response = rag.invoke(data=data)
-                if hasattr(response, 'content'):
-                    content = str(response.content)
-                else:
-                    content = str(response['response'])
+        await websocket.accept()
+        logger.info(f'Started web socket for notebook_id : {notebook_id}, sources_ids : {sources_ids}, File : main.py, Line : 58')
+        rag = retrieve()
+        logger.info(f'Retrieved RAG system. File : main.py, Line : 60')
+        conv = client_db.table('Conversation').select('*').eq('notebook_id', notebook_id).execute().data
+        logger.info(f'Retrieved conversation for notebook_id : {notebook_id}. File : main.py, Line : 61')
+        if not conv:        
+            insert_data = {
+                "notebook_id": notebook_id,
+                "title" : notebook_id
+            }
+            client_db.table('Conversation').insert(insert_data).execute()
+            conversation_id = client_db.table('Conversation').select('conversation_id').eq('notebook_id', notebook_id).execute()
+        else:
+            conversation_id = conv[0]['conversation_id']
+        s_ids = sources_ids.split(',') if sources_ids else []
+        data = {'notebook_id': notebook_id, 'sources_ids': s_ids}
+        try:
+            last_six_messages = client_db.table('Message').select('*').eq('conversation_id',conversation_id).order('created_at', desc=True).limit(6).execute().data[::-1]
+            while True:
+                user_msg = await websocket.receive_text()
                 client_db.table('Message').insert({
-                        'conversation_id' : conversation_id,
-                        'sender_type' : 'AIMessage',
-                        'content' : content
-                    }).execute()
-                last_six_messages.append({'conversation_id' : conversation_id,
-                        'sender_type' : 'AIMessage',
-                        'content' : content,
-                        'created_at' : time.time()
-                        })
-                last_six_messages = last_six_messages[-6:]
-                await websocket.send_text(content)
-
-            except Exception as e:
-                await websocket.send_text(f"An error occurred: {e}")
-
-    except WebSocketDisconnect:
-        print("Client disconnected")
+                    'conversation_id' : conversation_id,
+                    'sender_type' : 'HumanMessage',
+                    'content' : user_msg
+                }).execute()
+                last_six_messages.append({
+                    'conversation_id' : conversation_id,
+                    'sender_type' : 'HumanMessage',
+                    'content' : user_msg,
+                    'created_at' : time.time()
+                    })
+                if not notebook_id or notebook_id == 'null':
+                    await websocket.send_text("Error: No notebook active. Please select a notebook to chat.")
+                    continue
+                data['messages'] = last_six_messages
+                data['query'] = user_msg
+                
+                try:
+                    response = rag.invoke(data=data)
+                    if hasattr(response, 'content'):
+                        content = str(response.content)
+                    else:
+                        content = str(response['response'])
+                    client_db.table('Message').insert({
+                            'conversation_id' : conversation_id,
+                            'sender_type' : 'AIMessage',
+                            'content' : content
+                        }).execute()
+                    last_six_messages.append({'conversation_id' : conversation_id,
+                            'sender_type' : 'AIMessage',
+                            'content' : content,
+                            'created_at' : time.time()
+                            })
+                    last_six_messages = last_six_messages[-6:]
+                    await websocket.send_text(content)
+    
+                except Exception as e:
+                    await websocket.send_text(f"An error occurred: {e}")
+    
+        except WebSocketDisconnect:
+            logger.warning("Client disconnected")
+    except:
+        logger.warning('Error in chat_websocket.')
 
 @app.get("/chat/",response_class=HTMLResponse)
 async def chat(request : Request):
-    notebook_id = request.query_params.get("notebook_id")
-    data = await loadNotebookSource(notebook_id)
-    sources = []
-    for source in data.get('sources', []):
-        sources.append(source['source_id'])
-    return templates.TemplateResponse(
-        request=request, 
-        name="chatbot.html", 
-        context={"message": "chat window", "notebook_id": notebook_id, 'sources' : sources}
-    )
+    try:
+        notebook_id = request.query_params.get("notebook_id")
 
+        data = await loadNotebookSource(notebook_id)
+        sources = []
+        for source in data.get('sources', []):
+            sources.append(source['source_id'])
+        return templates.TemplateResponse(
+            request=request, 
+            name="chatbot.html", 
+            context={"message": "chat window", "notebook_id": notebook_id, 'sources' : sources}
+        )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise HTTPException(status_code=500, detail=str(e))
+        else:
+            logger.error(f'Error in chat : {e}. File : main.py, Line : 139')
+            raise HTTPException(status_code=500, detail=str(e))
 @app.get('/chat/get_prev_chat')
 async def getPrevChats(notebook_id: str):
     try:
         chats = client_db.table('Conversation').select('*').eq('notebook_id', notebook_id).execute()
         if chats is None:
+            logger.info('No chats found. File : main.py, Line : 147')
+            return {'messages': []}
+        if len(chats.data) == 0:
+            logger.info('No chats found. File : main.py, Line : 149')
             return {'messages': []}
         conversation_id = chats.data[0]['conversation_id']
         messages = client_db.table('Message').select('*').eq('conversation_id', conversation_id).execute()
         return {'messages': messages.data if messages.data else []}
     except Exception as e:
-        raise e
+        if isinstance(e, HTTPException):
+            raise HTTPException(status_code=500, detail=str(e))
+        else:
+            logger.error(f'Error in getPrevChats : {e}. File : main.py, Line : 154')
+            raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/notebook/sources/add/')
 async def addSource(request: AddSourceInput):
@@ -212,10 +233,12 @@ async def deleteSource(request: DeleteSourceInput):
 
 @app.get('/notebook/sources/')
 async def loadNotebookSource(notebook_id: str):
-    source = client_db.table('Source').select('*').eq('notebook_id', notebook_id).execute()
-    return {'sources': source.data if source.data else []}
-
-
+    try:
+        source = client_db.table('Source').select('*').eq('notebook_id', notebook_id).execute()
+        return {'sources': source.data if source.data else []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
 @app.get("/", response_class=HTMLResponse)
 async def get(request : Request):
     return templates.TemplateResponse(
