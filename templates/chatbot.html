@@ -1737,7 +1737,7 @@
 
     function connect() {
       try {
-        var wsUrl = 'ws://localhost:8000/ws/chat';
+        var wsUrl = 'https://synapse-ai-bxob.onrender.com/ws/chat';
         var params = [];
         if (currentNotebookId) params.push('notebook_id=' + encodeURIComponent(currentNotebookId));
         if (sources && sources.length > 0) {
