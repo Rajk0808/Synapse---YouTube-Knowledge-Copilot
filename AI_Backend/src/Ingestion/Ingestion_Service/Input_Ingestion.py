@@ -495,7 +495,7 @@ class Utils:
                 transcript = self.extract_time_aware_transcript(url, languages)
                 metadata["transcript"] = transcript
             except ValueError as exc:
-                logger.error('Error during extraction of time aware transcript. file : input_ingestion.py, Line : 487')
+                logger.error(f'Error during extraction of time aware transcript. file : input_ingestion.py, Line : 487, error : {exc}')
                 metadata["transcript_error"] = str(exc)
 
         return metadata
