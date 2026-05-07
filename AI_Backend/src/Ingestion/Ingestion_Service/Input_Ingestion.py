@@ -1,6 +1,7 @@
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 import os
+import tempfile
 import logging
 logger = logging.getLogger(__name__)
 from googleapiclient.discovery import build
@@ -300,6 +301,64 @@ class Utils:
         else:
             return {}
 
+    # ── Supadata fallback ─────────────────────────────────────────────────────
+
+    def _fetch_via_supadata(self, video_id: str, language: str = "en") -> list[dict]:
+        """
+        Fetch transcript via Supadata API.
+        Requires SUPADATA_API_KEY environment variable.
+
+        Supadata acts as a middleman — it fetches from YouTube using
+        its own residential IPs, bypassing IP block issues on cloud hosts.
+
+        Sign up free at https://supadata.ai to get your API key.
+        Free tier: 100 requests/day.
+        """
+        import requests
+
+        api_key = os.getenv("SUPADATA_API_KEY")
+        if not api_key:
+            raise ValueError("SUPADATA_API_KEY environment variable is not set.")
+
+        logger.info(f"Fetching transcript via Supadata for video: {video_id}")
+
+        response = requests.get(
+            "https://api.supadata.ai/v1/youtube/transcript",
+            params={"videoId": video_id, "lang": language},
+            headers={"x-api-key": api_key},
+            timeout=30,
+        )
+
+        if response.status_code == 429:
+            raise ValueError("Supadata free tier daily limit (100 req/day) reached. Try again tomorrow.")
+        if response.status_code == 404:
+            raise ValueError(f"Supadata could not find transcript for video: {video_id}")
+        if not response.ok:
+            raise ValueError(f"Supadata API error {response.status_code}: {response.text}")
+
+        data = response.json()
+
+        # Supadata returns: { "content": [{"text": "...", "offset": 1234, "duration": 5000, "lang": "en"}, ...] }
+        # offset and duration are in milliseconds
+        segments = []
+        for item in data.get("content", []):
+            start_sec = item.get("offset", 0) / 1000.0
+            duration_sec = item.get("duration", 0) / 1000.0
+            text = item.get("text", "").strip()
+            if not text:
+                continue
+            segments.append({
+                "text": text,
+                "start": start_sec,
+                "duration": duration_sec,
+            })
+
+        if not segments:
+            raise ValueError("Supadata returned an empty transcript.")
+
+        logger.info(f"Supadata returned {len(segments)} transcript segments.")
+        return segments
+
     # ── Transcript helpers ────────────────────────────────────────────────────
 
     def _fetch_transcript_items(self, video_id: str, language_priority: list[str]) -> list[dict]:
@@ -330,125 +389,227 @@ class Utils:
         millis_part = milliseconds % 1000
         return f"{hours_part:02}:{minutes_part:02}:{seconds_part:02}.{millis_part:03}"
 
+    def _get_yt_dlp_cookiefile(self) -> str | None:
+        """
+        Return a yt-dlp cookiefile path.
+
+        Supports two modes:
+        1. YOUTUBE_COOKIES_CONTENT — paste the full cookies.txt content as an env var.
+           The method writes it to a temp file and returns the path.
+           Use this on cloud hosts like Render where you can't upload files.
+
+        2. File path env vars — YT_DLP_COOKIES / YTDLP_COOKIES_PATH / YOUTUBE_COOKIES_PATH
+           Point these to an actual cookies.txt file on disk.
+
+        How to export cookies:
+        - Install "Get cookies.txt LOCALLY" extension in Chrome/Firefox
+        - Visit youtube.com while logged in
+        - Export cookies → copy the file content
+        - Paste into YOUTUBE_COOKIES_CONTENT env var on Render
+        Note: Cookies expire every ~2-4 weeks and will need to be refreshed.
+        """
+        # Mode 1: cookie content pasted directly as env var (best for Render)
+        cookie_content = os.getenv("YOUTUBE_COOKIES_CONTENT")
+        if cookie_content:
+            try:
+                tmp = tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".txt", delete=False, prefix="yt_cookies_"
+                )
+                tmp.write(cookie_content)
+                tmp.flush()
+                tmp.close()
+                logger.info(f"Wrote YouTube cookies to temp file: {tmp.name}")
+                return tmp.name
+            except Exception as e:
+                logger.warning(f"Failed to write cookie content to temp file: {e}")
+
+        # Mode 2: path to cookies file on disk
+        for env_name in ["YT_DLP_COOKIES", "YTDLP_COOKIES_PATH", "YOUTUBE_COOKIES_PATH"]:
+            cookiefile = os.getenv(env_name)
+            if cookiefile:
+                return cookiefile
+
+        return None
+
+    def _parse_vtt_subtitles(self, vtt_text: str) -> list[dict]:
+        """Parse VTT subtitle content into transcript segments."""
+        import re
+
+        cue_pattern = re.compile(
+            r"(?P<start>\d{2}:\d{2}:\d{2}\.\d{3})\s+-->\s+(?P<end>\d{2}:\d{2}:\d{2}\.\d{3})"
+        )
+
+        def ts_to_sec(ts: str) -> float:
+            h, m, s = ts.split(":")
+            sec, ms = s.split(".")
+            return int(h) * 3600 + int(m) * 60 + int(sec) + int(ms) / 1000
+
+        segments = []
+        lines = vtt_text.splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            m = cue_pattern.match(line)
+            if m:
+                start_sec = ts_to_sec(m.group("start"))
+                end_sec = ts_to_sec(m.group("end"))
+                i += 1
+                text_parts = []
+                while i < len(lines) and lines[i].strip():
+                    text_parts.append(lines[i].strip())
+                    i += 1
+                text = " ".join(text_parts)
+                if text:
+                    segments.append(
+                        {
+                            "text": text,
+                            "start": start_sec,
+                            "duration": end_sec - start_sec,
+                            "end": end_sec,
+                            "timecode": f"{self._format_seconds(start_sec)} --> {self._format_seconds(end_sec)}",
+                        }
+                    )
+            i += 1
+        return segments
+
+    def _fetch_subtitles_with_yt_dlp(self, video_id: str, language_priority: list[str]) -> list[dict]:
+        """Use yt-dlp to fetch subtitles and return them as transcript segments."""
+        try:
+            from yt_dlp import YoutubeDL
+        except Exception as exc:
+            raise ValueError("yt-dlp is required for transcript fallback but is not installed.") from exc
+
+        ydl_opts = {
+            "skip_download": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": language_priority,
+            "subtitlesformat": "vtt",
+            "quiet": True,
+            "no_warnings": True,
+        }
+
+        cookiefile = self._get_yt_dlp_cookiefile()
+        if cookiefile:
+            ydl_opts["cookiefile"] = cookiefile
+            logger.info("Using cookies file for yt-dlp.")
+        else:
+            logger.warning(
+                "No cookies file found for yt-dlp. "
+                "Set YOUTUBE_COOKIES_CONTENT on Render for better success rate."
+            )
+
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+
+        subtitle_sources = (
+            info.get("subtitles", {})
+            or info.get("requested_subtitles", {})
+            or info.get("automatic_captions", {})
+        )
+
+        if not subtitle_sources:
+            raise ValueError(
+                "yt-dlp was unable to find subtitles for this video. "
+                "If the video requires sign-in, set a valid cookies file via YOUTUBE_COOKIES_CONTENT."
+            )
+
+        import requests
+
+        for lang in language_priority:
+            if lang in subtitle_sources:
+                sub_entry = subtitle_sources[lang][0]
+                if not sub_entry.get("url"):
+                    continue
+                resp = requests.get(sub_entry["url"], timeout=10)
+                resp.raise_for_status()
+                vtt_text = resp.text
+                segments = self._parse_vtt_subtitles(vtt_text)
+                if segments:
+                    return segments
+
+        raise ValueError(
+            "yt-dlp subtitle fallback failed: no usable subtitles were found for the requested languages. "
+            "Try a different language or supply a YouTube cookies file via YOUTUBE_COOKIES_CONTENT."
+        )
+
+    def _fetch_with_fallback_chain(self, video_id: str, language_priority: list[str]) -> list[dict]:
+        """
+        Central fallback chain for transcript fetching.
+
+        Priority order:
+          1. YouTubeTranscriptApi (direct, fastest)
+          2. Supadata API         (bypasses IP blocks on cloud hosts — free 100 req/day)
+          3. yt-dlp               (last resort, needs cookies on cloud hosts)
+
+        On cloud hosts like Render, step 1 will usually fail with IpBlocked.
+        Step 2 (Supadata) will handle the majority of cases for free.
+        Step 3 is the final safety net if Supadata quota is exhausted.
+        """
+        errors = []
+
+        # ── Step 1: Direct YouTubeTranscriptApi ──────────────────────────────
+        try:
+            logger.info(f"[Transcript] Trying YouTubeTranscriptApi for video: {video_id}")
+            return self._fetch_transcript_items(video_id, language_priority)
+        except (IpBlocked, RequestBlocked) as exc:
+            logger.warning(f"[Transcript] YouTubeTranscriptApi IP blocked: {exc}")
+            errors.append(f"YouTubeTranscriptApi (IP blocked): {exc}")
+        except (TranscriptsDisabled, NoTranscriptFound) as exc:
+            logger.warning(f"[Transcript] No transcript found via YouTubeTranscriptApi: {exc}")
+            errors.append(f"YouTubeTranscriptApi (no transcript): {exc}")
+        except VideoUnavailable as exc:
+            # No point trying further — video itself is unavailable
+            raise ValueError("Video is unavailable or private.") from exc
+
+        # ── Step 2: Supadata API ─────────────────────────────────────────────
+        supadata_key = os.getenv("SUPADATA_API_KEY")
+        if supadata_key:
+            try:
+                logger.info(f"[Transcript] Trying Supadata for video: {video_id}")
+                return self._fetch_via_supadata(video_id, language_priority[0])
+            except ValueError as exc:
+                logger.warning(f"[Transcript] Supadata failed: {exc}")
+                errors.append(f"Supadata: {exc}")
+        else:
+            logger.info("[Transcript] Supadata skipped — SUPADATA_API_KEY not set.")
+            errors.append("Supadata: SUPADATA_API_KEY not configured.")
+
+        # ── Step 3: yt-dlp with cookies ──────────────────────────────────────
+        try:
+            logger.info(f"[Transcript] Trying yt-dlp fallback for video: {video_id}")
+            return self._fetch_subtitles_with_yt_dlp(video_id, language_priority)
+        except Exception as exc:
+            logger.warning(f"[Transcript] yt-dlp fallback failed: {exc}")
+            errors.append(f"yt-dlp: {exc}")
+
+        # ── All methods failed ───────────────────────────────────────────────
+        cookie_hint = (
+            "To improve success rate on cloud hosts:\n"
+            "  • Set SUPADATA_API_KEY (free at https://supadata.ai)\n"
+            "  • Or set YOUTUBE_COOKIES_CONTENT with your browser cookies\n"
+            "    (export via 'Get cookies.txt LOCALLY' Chrome/Firefox extension)"
+        )
+        raise ValueError(
+            f"All transcript fetching methods failed for video '{video_id}'.\n"
+            f"{cookie_hint}\n\n"
+            f"Individual errors:\n" + "\n".join(f"  - {e}" for e in errors)
+        )
+
     def extract_transcript(self, url: str, languages: list[str] | None = None) -> list[dict]:
         """
         Extract plain transcript text (no timestamps).
 
         Returns:
-            list[dict]: Full transcript as a list of dictionaries.
+            list[dict]: Full transcript as a list of dictionaries with
+                        'text', 'start', and 'duration' fields.
         """
         video_id = self._extract_video_id(url)
         if not video_id:
             raise ValueError("Invalid YouTube URL. Could not extract video ID.")
 
         language_priority = languages or ["en"]
-
-        try:
-            transcript_items = self._fetch_transcript_items(video_id, language_priority)
-            return transcript_items
-    
-        except (TranscriptsDisabled, NoTranscriptFound) as exc:
-            # Try to fetch subtitles using yt-dlp as a fallback when YouTube captions are unavailable
-            try:
-                from yt_dlp import YoutubeDL
-                ydl_opts = {
-                    "skip_download": True,
-                    "writesubtitles": True,
-                    "subtitleslangs": language_priority,
-                    "quiet": True,
-                }
-                with YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
-                    subs = info.get("subtitles", {})
-                    # Prefer the first requested language that exists
-                    for lang in language_priority:
-                        if lang in subs:
-                            # subtitles are provided as a list of dicts with 'url'
-                            sub_url = subs[lang][0]["url"]
-                            # Fetch the subtitle file
-                            import requests
-                            sub_resp = requests.get(sub_url, timeout=10)
-                            sub_resp.raise_for_status()
-                            # Simple extraction of text from VTT/TTML (strip timestamps and markup)
-                            import re
-                            text = re.sub(r"\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}", "", sub_resp.text)
-                            text = re.sub(r"<[^>]+>", "", text)  # remove any HTML/TTML tags
-                            text = re.sub(r"\s+", " ", text).strip()
-                            if text:
-                                return text
-            except Exception as yt_exc:
-                # Log the secondary failure and re‑raise the original exception for consistent API response
-                logger.warning(f"yt-dlp subtitle fallback failed for video {video_id}: {yt_exc}")
-                raise ValueError(
-                        "Transcript is not available for this video and yt-dlp fallback also failed. "
-                        "The video might have captions disabled, no captions in the requested languages, "
-                        "be too short, or require YouTube login to access. "
-                        f"Original error: {exc}" ) from exc
-        except (IpBlocked, RequestBlocked) as exc:
-            # Fallback using yt-dlp to download subtitles with timestamps when transcript API is blocked
-            try:
-                from yt_dlp import YoutubeDL
-                ydl_opts = {
-                    "skip_download": True,
-                    "writesubtitles": True,
-                    "subtitleslangs": language_priority,
-                    "subtitlesformat": "vtt",
-                    "quiet": True,
-                }
-                with YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
-                    subs = info.get("subtitles", {})
-                    for lang in language_priority:
-                        if lang in subs:
-                            sub_url = subs[lang][0]["url"]
-                            import requests, re
-                            resp = requests.get(sub_url, timeout=10)
-                            resp.raise_for_status()
-                            vtt_text = resp.text
-                            # Parse VTT cues into segments
-                            cue_pattern = re.compile(r"(?P<start>\d{2}:\d{2}:\d{2}\.\d{3})\s+-->\s+(?P<end>\d{2}:\d{2}:\d{2}\.\d{3})")
-                            def ts_to_sec(ts: str) -> float:
-                                h, m, s = ts.split(":")
-                                sec, ms = s.split(".")
-                                return int(h) * 3600 + int(m) * 60 + int(sec) + int(ms) / 1000
-                            segments = []
-                            lines = vtt_text.splitlines()
-                            i = 0
-                            while i < len(lines):
-                                line = lines[i].strip()
-                                m = cue_pattern.match(line)
-                                if m:
-                                    start_sec = ts_to_sec(m.group("start"))
-                                    end_sec = ts_to_sec(m.group("end"))
-                                    i += 1
-                                    text_parts = []
-                                    while i < len(lines) and lines[i].strip():
-                                        text_parts.append(lines[i].strip())
-                                        i += 1
-                                    text = " ".join(text_parts)
-                                    if text:
-                                        segments.append({
-                                            "text": text,
-                                            "start": start_sec,
-                                            "duration": end_sec - start_sec,
-                                            "end": end_sec,
-                                            "timecode": f"{self._format_seconds(start_sec)} --> {self._format_seconds(end_sec)}",
-                                        })
-                                i += 1
-                            if segments:
-                                return segments
-                            # If subtitles exist but no segments parsed, continue to raise
-                            break
-                    # No suitable subtitles found
-                    raise ValueError("Subtitle fallback failed: no subtitles available for requested languages.")
-            except Exception as yt_exc:
-                logger.warning(f"yt-dlp subtitle fallback failed for video {video_id}: {yt_exc}")
-                raise ValueError(
-                    "YouTube is blocking transcript requests from this IP/network right now. "
-                    "Try again later or run from a different network."
-                ) from exc
-        except VideoUnavailable as exc:
-            raise ValueError("Video is unavailable or private.") from exc
+        return self._fetch_with_fallback_chain(video_id, language_priority)
 
     def extract_time_aware_transcript(
         self, url: str, languages: list[str] | None = None
@@ -459,7 +620,7 @@ class Utils:
         Returns:
             list[dict]: Segments with text/start/end/duration/timecode fields.
         """
-        logger.info('Extracting time aware transcript. File : input_ingestion.py, Line : 400.') 
+        logger.info('Extracting time aware transcript. File : input_ingestion.py, Line : 400.')
         video_id = self._extract_video_id(url)
         if not video_id:
             logger.error('Invalid YouTube URL. Could not extract video ID. File : input_ingestion.py, Line : 405.')
@@ -467,48 +628,31 @@ class Utils:
 
         language_priority = languages or ["en"]
 
-        try:
-            logger.info('Fetching transcript items. File : input_ingestion.py, Line : 411.')
-            transcript_items = self._fetch_transcript_items(video_id, language_priority)
-            segments = []
+        # Use the unified fallback chain
+        transcript_items = self._fetch_with_fallback_chain(video_id, language_priority)
 
-            for item in transcript_items:
-                start = float(item.get("start", 0.0))
-                duration = float(item.get("duration", 0.0))
-                end = start + duration
-                text = item.get("text", "")
+        segments = []
+        for item in transcript_items:
+            start = float(item.get("start", 0.0))
+            duration = float(item.get("duration", 0.0))
+            end = start + duration
+            text = item.get("text", "").strip()
 
-                if not text:
-                    continue
+            if not text:
+                continue
 
-                segments.append(
-                    {
-                        "text": text,
-                        "start": start,
-                        "duration": duration,
-                        "end": end,
-                        "timecode": f"{self._format_seconds(start)} --> {self._format_seconds(end)}",
-                    }
-                )
-            logger.info('Extraction done, File : input_ingestion.py, line : 436')
-            return segments
+            segments.append(
+                {
+                    "text": text,
+                    "start": start,
+                    "duration": duration,
+                    "end": end,
+                    "timecode": f"{self._format_seconds(start)} --> {self._format_seconds(end)}",
+                }
+            )
 
-        except (TranscriptsDisabled, NoTranscriptFound) as exc:
-            logger.error('Transcript not found or disabled. File : input_ingestion.py, line : 440')
-            raise ValueError(
-                "Transcript is not available for this video. "
-                f"The video likely has captions disabled, no captions in {language_priority}, "
-                "or requires YouTube login to access."
-            ) from exc
-        except (IpBlocked, RequestBlocked) as exc:
-            logger.error('Transcript request block , File : input_ingestion.py, line : 447')
-            raise ValueError(
-                "YouTube is blocking transcript requests from this IP/network right now. "
-                "Try again later or run from a different network."
-            ) from exc
-        except VideoUnavailable as exc:
-            logger.error('Video is unavailable or private., File : input_ingestion.py, line : 453')
-            raise ValueError("Video is unavailable or private.") from exc
+        logger.info(f'Extraction done — {len(segments)} segments. File : input_ingestion.py')
+        return segments
 
     # ── Main entry point ──────────────────────────────────────────────────────
 
@@ -524,7 +668,7 @@ class Utils:
             dict: Combined metadata and transcript (if available).
         """
         url = data.get("url")
-        
+
         if not url:
             logger.info('Url not found, File input ingestion : line 461')
             raise ValueError("'url' is required in input data.")
@@ -548,12 +692,14 @@ class Utils:
 
         if url_type in {"video", "video_in_playlist"}:
             try:
-                logger.info('Extrating Time aware transcript, file input_ingestion, line : 483')
+                logger.info('Extracting transcript, file input_ingestion, line : 483')
                 transcript = self.extract_transcript(url, languages)
                 metadata["transcript"] = transcript
             except ValueError as exc:
-                logger.error(f'Error during extraction of time aware transcript. file : input_ingestion.py, Line : 487, error : {exc}')
+                logger.error(
+                    f'Error during extraction of transcript. '
+                    f'file : input_ingestion.py, Line : 487, error : {exc}'
+                )
                 metadata["transcript_error"] = str(exc)
 
         return metadata
-

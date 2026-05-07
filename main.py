@@ -140,6 +140,7 @@ async def chat(request : Request):
         else:
             logger.error(f'Error in chat : {e}. File : main.py, Line : 139')
             raise HTTPException(status_code=500, detail=str(e))
+        
 @app.get('/chat/get_prev_chat')
 async def getPrevChats(notebook_id: str):
     try:
